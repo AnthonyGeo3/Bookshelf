@@ -23,7 +23,6 @@
     html, body { background: var(--paper); color: var(--ink); }
     body {
       font-family: ui-serif, Georgia, "Times New Roman", serif;
-      /* faint vertical paper lines — gives the wall a touch of texture without an image */
       background:
         repeating-linear-gradient(0deg, transparent 0 22px, rgba(59,36,24,.04) 22px 23px),
         linear-gradient(180deg, var(--paper), var(--paper-shade));
@@ -33,71 +32,35 @@
     h1, h2 { font-family: ui-serif, "Iowan Old Style", Georgia, serif; }
 
     /* ---------- bookcase ---------- */
-    .shelf {
-      position: relative;
-      padding-bottom: 18px;
-    }
+    .shelf { position: relative; padding-bottom: 18px; }
     .shelf-row {
-      display: flex;
-      align-items: flex-end;
-      gap: 6px;
-      padding: 6px 14px 0 14px;
-      overflow-x: auto;
-      overflow-y: visible;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(59,36,24,.25) transparent;
-      min-height: 200px;
+      display: flex; align-items: flex-end; gap: 6px; padding: 6px 14px 0 14px;
+      overflow-x: auto; overflow-y: visible; scrollbar-width: thin;
+      scrollbar-color: rgba(59,36,24,.25) transparent; min-height: 200px;
     }
     .shelf-row::-webkit-scrollbar { height: 6px; }
     .shelf-row::-webkit-scrollbar-thumb { background: rgba(59,36,24,.25); border-radius: 4px; }
     .shelf-plank {
       height: 16px;
-      background:
-        linear-gradient(180deg, var(--wood-light) 0%, var(--wood-mid) 55%, var(--wood-dark) 100%);
-      box-shadow:
-        0 6px 8px -2px rgba(0,0,0,.30),
-        inset 0 1px 0 rgba(255,255,255,.12),
-        inset 0 -2px 0 rgba(0,0,0,.25);
+      background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-mid) 55%, var(--wood-dark) 100%);
+      box-shadow: 0 6px 8px -2px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.25);
       border-radius: 2px 2px 5px 5px;
     }
 
     /* ---------- book spine ---------- */
     .book {
-      flex: 0 0 auto;
-      width: 38px;
-      min-height: 150px;
-      border-radius: 3px 3px 1px 1px;
-      writing-mode: vertical-rl;
-      text-orientation: mixed;
-      padding: 10px 4px;
-      font-family: ui-serif, Georgia, serif;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      cursor: pointer;
-      color: inherit;
-      border: none;
-      box-shadow:
-        inset -3px 0 0 rgba(0,0,0,.22),
-        inset 3px 0 0 rgba(255,255,255,.10),
-        2px 3px 4px rgba(0,0,0,.20);
-      transition: transform .15s ease, box-shadow .15s ease;
-      will-change: transform;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      line-height: 1.1;
+      flex: 0 0 auto; width: 38px; min-height: 150px; border-radius: 3px 3px 1px 1px;
+      writing-mode: vertical-rl; text-orientation: mixed; padding: 10px 4px;
+      font-family: ui-serif, Georgia, serif; font-size: 11px; font-weight: 600;
+      letter-spacing: 0.04em; cursor: pointer; color: inherit; border: none;
+      box-shadow: inset -3px 0 0 rgba(0,0,0,.22), inset 3px 0 0 rgba(255,255,255,.10), 2px 3px 4px rgba(0,0,0,.20);
+      transition: transform .15s ease, box-shadow .15s ease; will-change: transform;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.1;
     }
-    .book:hover,
-    .book:focus-visible {
+    .book:hover, .book:focus-visible {
       transform: translateY(-8px);
-      box-shadow:
-        inset -3px 0 0 rgba(0,0,0,.22),
-        inset 3px 0 0 rgba(255,255,255,.10),
-        2px 8px 10px rgba(0,0,0,.25);
-      outline: none;
+      box-shadow: inset -3px 0 0 rgba(0,0,0,.22), inset 3px 0 0 rgba(255,255,255,.10), 2px 8px 10px rgba(0,0,0,.25); outline: none;
     }
-    /* a touch of natural lean so the shelf doesn't look militaristically aligned */
     .book:nth-child(4n) { transform: rotate(-1.2deg); }
     .book:nth-child(7n) { transform: rotate(1.4deg); }
     .book:nth-child(4n):hover, .book:nth-child(4n):focus-visible,
@@ -105,79 +68,47 @@
 
     /* ---------- empty slot placeholder ---------- */
     .empty-slot {
-      flex: 0 0 auto;
-      width: 38px;
-      min-height: 150px;
-      border: 1.5px dashed rgba(59,36,24,.25);
-      border-radius: 3px;
-      color: rgba(59,36,24,.45);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px; background: transparent; cursor: pointer;
+      flex: 0 0 auto; width: 38px; min-height: 150px; border: 1.5px dashed rgba(59,36,24,.25);
+      border-radius: 3px; color: rgba(59,36,24,.45); display: flex; align-items: center;
+      justify-content: center; font-size: 22px; background: transparent; cursor: pointer;
     }
     .empty-slot:hover { background: rgba(59,36,24,.04); color: var(--ink); }
 
     /* ---------- floating add button ---------- */
     .fab {
-      position: fixed;
-      bottom: max(16px, env(safe-area-inset-bottom));
-      right: 16px;
-      width: 56px; height: 56px;
-      border-radius: 50%;
-      background: var(--wood-mid);
-      color: var(--paper);
-      font-size: 30px; line-height: 1;
-      box-shadow: 0 8px 16px rgba(0,0,0,.25);
-      border: none;
-      cursor: pointer;
+      position: fixed; bottom: max(16px, env(safe-area-inset-bottom)); right: 16px;
+      width: 56px; height: 56px; border-radius: 50%; background: var(--wood-mid);
+      color: var(--paper); font-size: 30px; line-height: 1; box-shadow: 0 8px 16px rgba(0,0,0,.25);
+      border: none; cursor: pointer;
     }
     .fab:active { transform: translateY(1px); }
 
     /* ---------- modal ---------- */
-    dialog#bookModal {
-      border: none;
-      padding: 0;
-      border-radius: 14px;
-      background: var(--paper);
-      color: var(--ink);
-      width: min(92vw, 460px);
-      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    dialog {
+      border: none; padding: 0; border-radius: 14px; background: var(--paper);
+      color: var(--ink); width: min(92vw, 460px); box-shadow: 0 20px 60px rgba(0,0,0,.35);
     }
-    dialog#bookModal::backdrop { background: rgba(0,0,0,.45); }
+    dialog::backdrop { background: rgba(0,0,0,.45); }
     .modal-inner { padding: 20px 22px 22px; }
     .modal-cover {
-      float: left;
-      width: 110px;
-      height: 165px;
-      margin: 0 14px 8px 0;
-      border-radius: 4px;
-      box-shadow: 0 6px 10px rgba(0,0,0,.25);
-      object-fit: cover;
-      background: var(--paper-shade);
+      float: left; width: 110px; height: 165px; margin: 0 14px 8px 0;
+      border-radius: 4px; box-shadow: 0 6px 10px rgba(0,0,0,.25); object-fit: cover; background: var(--paper-shade);
     }
     .stars { color: #c2761b; letter-spacing: 2px; }
 
-    .modal-close {
-      margin-top: 18px;
-      width: 100%;
-      padding: 10px 0;
-      border-radius: 8px;
-      background: var(--wood-mid);
-      color: var(--paper);
-      border: none;
-      cursor: pointer;
-      font-size: 14px;
-      letter-spacing: 0.04em;
+    .btn-wood {
+      width: 100%; padding: 10px 0; border-radius: 8px; background: var(--wood-mid);
+      color: var(--paper); border: none; cursor: pointer; font-size: 14px; letter-spacing: 0.04em;
     }
+    .btn-wood:disabled { opacity: 0.7; cursor: not-allowed; }
 
     /* ---------- profile chip ---------- */
     .profile-chip {
-      background: rgba(59,36,24,.08);
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      letter-spacing: 0.04em;
-      border: 1px solid rgba(59,36,24,.15);
+      background: rgba(59,36,24,.08); padding: 4px 10px; border-radius: 999px;
+      font-size: 12px; letter-spacing: 0.04em; border: 1px solid rgba(59,36,24,.15);
     }
+    
+    input, textarea { border-color: rgba(59,36,24,.2); outline-color: var(--wood-mid); }
   </style>
 </head>
 <body>
@@ -186,7 +117,7 @@
       <h1 class="text-3xl font-bold tracking-tight">Bookshelf</h1>
       <p class="text-sm opacity-70 italic">finished books look better on a shelf</p>
     </div>
-    <button id="profileBtn" class="profile-chip" type="button">anthony</button>
+    <button id="profileBtn" class="profile-chip" type="button">signing in...</button>
   </header>
 
   <main id="shelves" class="max-w-3xl mx-auto px-2 pt-4 pb-32 space-y-7"></main>
@@ -196,37 +127,138 @@
   <dialog id="bookModal" aria-labelledby="modalTitle">
     <form method="dialog" class="modal-inner">
       <div id="modalContent"></div>
-      <button class="modal-close" type="submit" value="close">close</button>
+      <button class="btn-wood mt-4" type="submit" value="close">close</button>
     </form>
   </dialog>
 
-  <footer class="text-center text-xs opacity-60 py-4">made with love · v0</footer>
+  <dialog id="addModal" aria-labelledby="addTitleLabel">
+    <form id="addForm" class="modal-inner space-y-4">
+      <h2 id="addTitleLabel" class="text-xl font-bold leading-tight">Add a finished book</h2>
+      <div>
+        <input type="text" id="addTitle" placeholder="Title" required class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+      </div>
+      <div>
+        <input type="text" id="addAuthor" placeholder="Author" required class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+      </div>
+      <div>
+        <label class="block text-sm opacity-70 mb-1">Rating (1-5)</label>
+        <input type="number" id="addRating" min="1" max="5" value="5" required class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+      </div>
+      <div>
+        <textarea id="addNotes" placeholder="Thoughts / Notes" class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)] h-24"></textarea>
+      </div>
+      <div class="flex gap-2 mt-4">
+        <button type="button" class="btn-wood flex-1 bg-opacity-20 bg-black text-[var(--ink)]" onclick="document.getElementById('addModal').close()">Cancel</button>
+        <button type="submit" id="saveBookBtn" class="btn-wood flex-1">Save to shelf</button>
+      </div>
+    </form>
+  </dialog>
 
-  <script>
-    // ---- v0 sample data (hardcoded — Firebase wiring comes next) ----
-    const books = [
-      { id: '1', title: 'Hamlet',           author: 'William Shakespeare', rating: 5, notes: 'Loved every line. The ending got me.',  spine: '#5a2828', ink: '#f5e6c8', height: 175, width: 36 },
-      { id: '2', title: 'The Hobbit',       author: 'J.R.R. Tolkien',      rating: 4, notes: 'Cosy adventure, will re-read in winter.', spine: '#2d4a2b', ink: '#e8d8a0', height: 152, width: 34 },
-      { id: '3', title: 'Pachinko',         author: 'Min Jin Lee',         rating: 5, notes: 'Sprawling and beautiful.',                spine: '#4a3b6b', ink: '#f0e6d0', height: 165, width: 40 },
-      { id: '4', title: 'Sapiens',          author: 'Yuval Noah Harari',   rating: 3, notes: 'Big ideas, sometimes too breezy.',        spine: '#b06a2c', ink: '#f4ecd8', height: 178, width: 42 },
-      { id: '5', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', rating: 5, notes: 'Green light, etc.',                       spine: '#1d3557', ink: '#f1faee', height: 142, width: 30 },
-      { id: '6', title: 'Dune',             author: 'Frank Herbert',       rating: 4, notes: 'Spice must flow.',                        spine: '#7a5230', ink: '#f4d27a', height: 188, width: 46 },
-      { id: '7', title: 'East of Eden',     author: 'John Steinbeck',      rating: 5, notes: 'Timshel.',                                spine: '#3d5a3d', ink: '#e8d8a0', height: 168, width: 38 },
-    ];
+  <footer class="text-center text-xs opacity-60 py-4">made with love · v1</footer>
 
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAHMaWQRXsAglvgPxsAfR0tmTNzSo67-Y4",
+      authDomain: "bookshelf-anthony.firebaseapp.com",
+      projectId: "bookshelf-anthony",
+      storageBucket: "bookshelf-anthony.firebasestorage.app",
+      messagingSenderId: "723627755565",
+      appId: "1:723627755565:web:5c96e32a6b9cee44ed50a4",
+      measurementId: "G-XNE7ET849Z"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentUser = null;
+    let books = [];
     const BOOKS_PER_SHELF = 8;
     const MIN_SHELVES = 3;
 
+    // Palette for randomised spine generation
+    const spineColors = ['#5a2828', '#2d4a2b', '#4a3b6b', '#b06a2c', '#1d3557', '#7a5230', '#3d5a3d'];
+    const inkColors = ['#f5e6c8', '#e8d8a0', '#f0e6d0', '#f4ecd8', '#f1faee', '#f4d27a', '#e8d8a0'];
+
+    // Auth & Data syncing
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        document.getElementById('profileBtn').textContent = 'anthony';
+        
+        const q = query(collection(db, `users/${user.uid}/books`), orderBy('createdAt', 'asc'));
+        onSnapshot(q, (snapshot) => {
+          books = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          renderShelves();
+        });
+      } else {
+        currentUser = null;
+        books = [];
+        document.getElementById('profileBtn').textContent = 'offline';
+        renderShelves();
+      }
+    });
+
+    signInAnonymously(auth).catch(console.error);
+
+    // Google Books API helper
+    async function fetchCover(title, author) {
+      try {
+        const q = encodeURIComponent(`intitle:${title}+inauthor:${author}`);
+        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1`);
+        const data = await res.json();
+        const thumb = data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
+        return thumb ? thumb.replace('http:', 'https:') : null;
+      } catch (e) {
+        console.warn('Failed to fetch cover', e);
+        return null;
+      }
+    }
+
+    // Form submission
+    document.getElementById('addForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const btn = document.getElementById('saveBookBtn');
+      btn.textContent = 'Saving...';
+      btn.disabled = true;
+
+      const title = document.getElementById('addTitle').value;
+      const author = document.getElementById('addAuthor').value;
+      const rating = parseInt(document.getElementById('addRating').value, 10);
+      const notes = document.getElementById('addNotes').value;
+
+      const cover = await fetchCover(title, author);
+      const colorIdx = Math.floor(Math.random() * spineColors.length);
+
+      await addDoc(collection(db, `users/${currentUser.uid}/books`), {
+        title, author, rating, notes, cover,
+        spine: spineColors[colorIdx],
+        ink: inkColors[colorIdx],
+        height: Math.floor(Math.random() * (190 - 140 + 1)) + 140, // Random height 140-190px
+        width: Math.floor(Math.random() * (46 - 30 + 1)) + 30,     // Random width 30-46px
+        createdAt: serverTimestamp()
+      });
+
+      document.getElementById('addModal').close();
+      e.target.reset();
+      btn.textContent = 'Save to shelf';
+      btn.disabled = false;
+    });
+
+    // Rendering Logic
     function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-      }[c]));
+      return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
     }
 
     function stars(n) {
       const filled = '★'.repeat(Math.max(0, Math.min(5, n)));
-      const empty  = '☆'.repeat(5 - filled.length);
-      return filled + empty;
+      return filled + '☆'.repeat(5 - filled.length);
     }
 
     function chunk(arr, n) {
@@ -252,14 +284,13 @@
 
         row.forEach(b => list.appendChild(makeSpine(b)));
 
-        // empty placeholder slot at the end of the last non-full shelf
         if (idx === rows.length - 1 && row.length < BOOKS_PER_SHELF) {
           const slot = document.createElement('button');
           slot.type = 'button';
           slot.className = 'empty-slot';
           slot.setAttribute('aria-label', 'Add a finished book');
           slot.textContent = '+';
-          slot.addEventListener('click', onAdd);
+          slot.addEventListener('click', () => document.getElementById('addModal').showModal());
           list.appendChild(slot);
         }
 
@@ -289,7 +320,6 @@
     function openBook(b) {
       const dlg = document.getElementById('bookModal');
       const c = document.getElementById('modalContent');
-      // cover is optional in v0 — leave the spot blank if missing rather than load a broken image
       const cover = b.cover
         ? `<img src="${escapeHtml(b.cover)}" alt="cover of ${escapeHtml(b.title)}" class="modal-cover" />`
         : '';
@@ -301,21 +331,12 @@
         <p class="text-sm leading-relaxed">${b.notes ? escapeHtml(b.notes) : '<em class="opacity-60">no notes yet</em>'}</p>
         <div style="clear:both"></div>
       `;
-      if (typeof dlg.showModal === 'function') dlg.showModal();
-      else dlg.setAttribute('open', '');
+      dlg.showModal();
     }
 
-    function onAdd() {
-      // v0 placeholder — real add-book flow lands when we wire Firebase
-      alert('The add-a-book flow lands once we wire Firebase. Coming next!');
-    }
-
-    document.getElementById('addBtn').addEventListener('click', onAdd);
-    document.getElementById('profileBtn').addEventListener('click', () => {
-      alert('Profiles arrive after Firebase Auth is wired (you + your partner, separate shelves with read-only peek).');
+    document.getElementById('addBtn').addEventListener('click', () => {
+      document.getElementById('addModal').showModal();
     });
-
-    renderShelves();
 
     // ---- service worker registration ----
     if ('serviceWorker' in navigator) {
