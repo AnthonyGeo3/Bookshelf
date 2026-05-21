@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#3b2418" />
+  <meta name="description" content="A personal digital bookshelf — finished books look better on a shelf." />
+  <title>Bookshelf</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --paper: #f4ecd8;
+      --paper-shade: #e9dcc0;
+      --ink: #3b2418;
+      --wood-light: #6b4226;
+      --wood-mid: #4a2c1a;
+      --wood-dark: #2e1c10;
+      --accent: #8b3a3a;
+    }
+    html, body { background: var(--paper); color: var(--ink); }
+    body {
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+      /* faint vertical paper lines — gives the wall a touch of texture without an image */
+      background:
+        repeating-linear-gradient(0deg, transparent 0 22px, rgba(59,36,24,.04) 22px 23px),
+        linear-gradient(180deg, var(--paper), var(--paper-shade));
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+    h1, h2 { font-family: ui-serif, "Iowan Old Style", Georgia, serif; }
+
+    /* ---------- bookcase ---------- */
+    .shelf {
+      position: relative;
+      padding-bottom: 18px;
+    }
+    .shelf-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+      padding: 6px 14px 0 14px;
+      overflow-x: auto;
+      overflow-y: visible;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(59,36,24,.25) transparent;
+      min-height: 200px;
+    }
+    .shelf-row::-webkit-scrollbar { height: 6px; }
+    .shelf-row::-webkit-scrollbar-thumb { background: rgba(59,36,24,.25); border-radius: 4px; }
+    .shelf-plank {
+      height: 16px;
+      background:
+        linear-gradient(180deg, var(--wood-light) 0%, var(--wood-mid) 55%, var(--wood-dark) 100%);
+      box-shadow:
+        0 6px 8px -2px rgba(0,0,0,.30),
+        inset 0 1px 0 rgba(255,255,255,.12),
+        inset 0 -2px 0 rgba(0,0,0,.25);
+      border-radius: 2px 2px 5px 5px;
+    }
+
+    /* ---------- book spine ---------- */
+    .book {
+      flex: 0 0 auto;
+      width: 38px;
+      min-height: 150px;
+      border-radius: 3px 3px 1px 1px;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      padding: 10px 4px;
+      font-family: ui-serif, Georgia, serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      color: inherit;
+      border: none;
+      box-shadow:
+        inset -3px 0 0 rgba(0,0,0,.22),
+        inset 3px 0 0 rgba(255,255,255,.10),
+        2px 3px 4px rgba(0,0,0,.20);
+      transition: transform .15s ease, box-shadow .15s ease;
+      will-change: transform;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.1;
+    }
+    .book:hover,
+    .book:focus-visible {
+      transform: translateY(-8px);
+      box-shadow:
+        inset -3px 0 0 rgba(0,0,0,.22),
+        inset 3px 0 0 rgba(255,255,255,.10),
+        2px 8px 10px rgba(0,0,0,.25);
+      outline: none;
+    }
+    /* a touch of natural lean so the shelf doesn't look militaristically aligned */
+    .book:nth-child(4n) { transform: rotate(-1.2deg); }
+    .book:nth-child(7n) { transform: rotate(1.4deg); }
+    .book:nth-child(4n):hover, .book:nth-child(4n):focus-visible,
+    .book:nth-child(7n):hover, .book:nth-child(7n):focus-visible { transform: translateY(-8px); }
+
+    /* ---------- empty slot placeholder ---------- */
+    .empty-slot {
+      flex: 0 0 auto;
+      width: 38px;
+      min-height: 150px;
+      border: 1.5px dashed rgba(59,36,24,.25);
+      border-radius: 3px;
+      color: rgba(59,36,24,.45);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; background: transparent; cursor: pointer;
+    }
+    .empty-slot:hover { background: rgba(59,36,24,.04); color: var(--ink); }
+
+    /* ---------- floating add button ---------- */
+    .fab {
+      position: fixed;
+      bottom: max(16px, env(safe-area-inset-bottom));
+      right: 16px;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--wood-mid);
+      color: var(--paper);
+      font-size: 30px; line-height: 1;
+      box-shadow: 0 8px 16px rgba(0,0,0,.25);
+      border: none;
+      cursor: pointer;
+    }
+    .fab:active { transform: translateY(1px); }
+
+    /* ---------- modal ---------- */
+    dialog#bookModal {
+      border: none;
+      padding: 0;
+      border-radius: 14px;
+      background: var(--paper);
+      color: var(--ink);
+      width: min(92vw, 460px);
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    dialog#bookModal::backdrop { background: rgba(0,0,0,.45); }
+    .modal-inner { padding: 20px 22px 22px; }
+    .modal-cover {
+      float: left;
+      width: 110px;
+      height: 165px;
+      margin: 0 14px 8px 0;
+      border-radius: 4px;
+      box-shadow: 0 6px 10px rgba(0,0,0,.25);
+      object-fit: cover;
+      background: var(--paper-shade);
+    }
+    .stars { color: #c2761b; letter-spacing: 2px; }
+
+    .modal-close {
+      margin-top: 18px;
+      width: 100%;
+      padding: 10px 0;
+      border-radius: 8px;
+      background: var(--wood-mid);
+      color: var(--paper);
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ---------- profile chip ---------- */
+    .profile-chip {
+      background: rgba(59,36,24,.08);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      border: 1px solid rgba(59,36,24,.15);
+    }
+  </style>
+</head>
+<body>
+  <header class="max-w-3xl mx-auto px-4 pt-6 pb-3 flex items-end justify-between">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">Bookshelf</h1>
+      <p class="text-sm opacity-70 italic">finished books look better on a shelf</p>
+    </div>
+    <button id="profileBtn" class="profile-chip" type="button">anthony</button>
+  </header>
+
+  <main id="shelves" class="max-w-3xl mx-auto px-2 pt-4 pb-32 space-y-7"></main>
+
+  <button id="addBtn" class="fab" type="button" aria-label="Add a finished book">+</button>
+
+  <dialog id="bookModal" aria-labelledby="modalTitle">
+    <form method="dialog" class="modal-inner">
+      <div id="modalContent"></div>
+      <button class="modal-close" type="submit" value="close">close</button>
+    </form>
+  </dialog>
+
+  <footer class="text-center text-xs opacity-60 py-4">made with love · v0</footer>
+
+  <script>
+    // ---- v0 sample data (hardcoded — Firebase wiring comes next) ----
+    const books = [
+      { id: '1', title: 'Hamlet',           author: 'William Shakespeare', rating: 5, notes: 'Loved every line. The ending got me.',  spine: '#5a2828', ink: '#f5e6c8', height: 175, width: 36 },
+      { id: '2', title: 'The Hobbit',       author: 'J.R.R. Tolkien',      rating: 4, notes: 'Cosy adventure, will re-read in winter.', spine: '#2d4a2b', ink: '#e8d8a0', height: 152, width: 34 },
+      { id: '3', title: 'Pachinko',         author: 'Min Jin Lee',         rating: 5, notes: 'Sprawling and beautiful.',                spine: '#4a3b6b', ink: '#f0e6d0', height: 165, width: 40 },
+      { id: '4', title: 'Sapiens',          author: 'Yuval Noah Harari',   rating: 3, notes: 'Big ideas, sometimes too breezy.',        spine: '#b06a2c', ink: '#f4ecd8', height: 178, width: 42 },
+      { id: '5', title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', rating: 5, notes: 'Green light, etc.',                       spine: '#1d3557', ink: '#f1faee', height: 142, width: 30 },
+      { id: '6', title: 'Dune',             author: 'Frank Herbert',       rating: 4, notes: 'Spice must flow.',                        spine: '#7a5230', ink: '#f4d27a', height: 188, width: 46 },
+      { id: '7', title: 'East of Eden',     author: 'John Steinbeck',      rating: 5, notes: 'Timshel.',                                spine: '#3d5a3d', ink: '#e8d8a0', height: 168, width: 38 },
+    ];
+
+    const BOOKS_PER_SHELF = 8;
+    const MIN_SHELVES = 3;
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
+
+    function stars(n) {
+      const filled = '★'.repeat(Math.max(0, Math.min(5, n)));
+      const empty  = '☆'.repeat(5 - filled.length);
+      return filled + empty;
+    }
+
+    function chunk(arr, n) {
+      const out = [];
+      for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+      return out;
+    }
+
+    function renderShelves() {
+      const root = document.getElementById('shelves');
+      root.innerHTML = '';
+
+      const rows = chunk(books, BOOKS_PER_SHELF);
+      while (rows.length < MIN_SHELVES) rows.push([]);
+
+      rows.forEach((row, idx) => {
+        const shelf = document.createElement('section');
+        shelf.className = 'shelf';
+        shelf.setAttribute('aria-label', `Shelf ${idx + 1}`);
+
+        const list = document.createElement('div');
+        list.className = 'shelf-row';
+
+        row.forEach(b => list.appendChild(makeSpine(b)));
+
+        // empty placeholder slot at the end of the last non-full shelf
+        if (idx === rows.length - 1 && row.length < BOOKS_PER_SHELF) {
+          const slot = document.createElement('button');
+          slot.type = 'button';
+          slot.className = 'empty-slot';
+          slot.setAttribute('aria-label', 'Add a finished book');
+          slot.textContent = '+';
+          slot.addEventListener('click', onAdd);
+          list.appendChild(slot);
+        }
+
+        const plank = document.createElement('div');
+        plank.className = 'shelf-plank';
+
+        shelf.appendChild(list);
+        shelf.appendChild(plank);
+        root.appendChild(shelf);
+      });
+    }
+
+    function makeSpine(b) {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'book';
+      el.style.background = `linear-gradient(90deg, ${b.spine} 0%, ${b.spine} 65%, rgba(0,0,0,0.18) 100%)`;
+      el.style.color = b.ink;
+      el.style.minHeight = b.height + 'px';
+      el.style.width = b.width + 'px';
+      el.setAttribute('aria-label', `${b.title} by ${b.author}, rated ${b.rating} of 5`);
+      el.textContent = b.title;
+      el.addEventListener('click', () => openBook(b));
+      return el;
+    }
+
+    function openBook(b) {
+      const dlg = document.getElementById('bookModal');
+      const c = document.getElementById('modalContent');
+      // cover is optional in v0 — leave the spot blank if missing rather than load a broken image
+      const cover = b.cover
+        ? `<img src="${escapeHtml(b.cover)}" alt="cover of ${escapeHtml(b.title)}" class="modal-cover" />`
+        : '';
+      c.innerHTML = `
+        ${cover}
+        <h2 id="modalTitle" class="text-xl font-bold leading-tight">${escapeHtml(b.title)}</h2>
+        <p class="opacity-70 text-sm mb-2">${escapeHtml(b.author)}</p>
+        <p class="stars text-lg mb-3" aria-label="rating ${b.rating} of 5">${stars(b.rating)}</p>
+        <p class="text-sm leading-relaxed">${b.notes ? escapeHtml(b.notes) : '<em class="opacity-60">no notes yet</em>'}</p>
+        <div style="clear:both"></div>
+      `;
+      if (typeof dlg.showModal === 'function') dlg.showModal();
+      else dlg.setAttribute('open', '');
+    }
+
+    function onAdd() {
+      // v0 placeholder — real add-book flow lands when we wire Firebase
+      alert('The add-a-book flow lands once we wire Firebase. Coming next!');
+    }
+
+    document.getElementById('addBtn').addEventListener('click', onAdd);
+    document.getElementById('profileBtn').addEventListener('click', () => {
+      alert('Profiles arrive after Firebase Auth is wired (you + your partner, separate shelves with read-only peek).');
+    });
+
+    renderShelves();
+
+    // ---- service worker registration ----
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW register failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
