@@ -348,15 +348,38 @@
     async function runBookSearch(term) {
       const resultsEl = document.getElementById('searchResults');
       resultsEl.innerHTML = '<div class="search-status">searching…</div>';
+      // Dropped `printType=books` from the original — it's an optional filter and might be excluding hits.
+      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=6`;
       try {
-        const q = encodeURIComponent(term);
-        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=6&printType=books`);
-        const data = await res.json();
-        const items = (data.items || []).filter(i => i.volumeInfo && i.volumeInfo.title);
-        if (items.length === 0) {
-          resultsEl.innerHTML = '<div class="search-status">no matches — try a different search</div>';
+        const res = await fetch(url);
+        const bodyText = await res.text();
+        let data = null;
+        try { data = JSON.parse(bodyText); } catch (_) { /* non-JSON response */ }
+
+        if (!res.ok) {
+          const msg = (data && data.error && data.error.message) || `HTTP ${res.status}`;
+          console.warn('book search HTTP error', { status: res.status, body: bodyText, url });
+          resultsEl.innerHTML = `<div class="search-status">search error: ${escapeHtml(msg)}</div>`;
           return;
         }
+        if (!data) {
+          console.warn('book search non-JSON response', { body: bodyText, url });
+          resultsEl.innerHTML = '<div class="search-status">search error: bad response from server</div>';
+          return;
+        }
+        if (data.error) {
+          console.warn('book search api error', data.error);
+          resultsEl.innerHTML = `<div class="search-status">search error: ${escapeHtml(data.error.message || 'unknown')}</div>`;
+          return;
+        }
+
+        const items = (data.items || []).filter(i => i.volumeInfo && i.volumeInfo.title);
+        if (items.length === 0) {
+          console.warn('book search returned no items', { totalItems: data.totalItems, url, data });
+          resultsEl.innerHTML = `<div class="search-status">no matches (API said totalItems = ${data.totalItems ?? 0})</div>`;
+          return;
+        }
+
         resultsEl.innerHTML = '';
         items.forEach(item => {
           const vi = item.volumeInfo;
@@ -380,8 +403,8 @@
           resultsEl.appendChild(row);
         });
       } catch (e) {
-        console.warn('book search failed', e);
-        resultsEl.innerHTML = '<div class="search-status">search failed — check your connection</div>';
+        console.warn('book search failed (fetch threw)', e, { url });
+        resultsEl.innerHTML = `<div class="search-status">search failed: ${escapeHtml(String(e.message || e))}</div>`;
       }
     }
 
