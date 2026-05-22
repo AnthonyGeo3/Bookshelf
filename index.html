@@ -674,6 +674,47 @@
       }
     }
 
+    // Richer Google Books fetch — pulls cover + description + page count + year in one call.
+    // Used by the mystery recommendation card. In-session cached so re-rolls don't re-fetch known titles.
+    const bookDetailsCache = new Map();
+    async function fetchBookDetails(title, author) {
+      const cacheKey = `${title.toLowerCase()}|${author.toLowerCase()}`;
+      if (bookDetailsCache.has(cacheKey)) return bookDetailsCache.get(cacheKey);
+      try {
+        const q = encodeURIComponent(`intitle:${title}+inauthor:${author}`);
+        const keyParam = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : '';
+        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1${keyParam}`);
+        const data = await res.json();
+        const vi = data.items?.[0]?.volumeInfo;
+        if (!vi) { bookDetailsCache.set(cacheKey, null); return null; }
+        const result = {
+          cover:         (vi.imageLinks?.thumbnail || '').replace('http:', 'https:') || null,
+          description:   vi.description   || null,
+          pageCount:     vi.pageCount     || null,
+          publishedDate: vi.publishedDate || null,
+        };
+        bookDetailsCache.set(cacheKey, result);
+        return result;
+      } catch (e) {
+        console.warn('Failed to fetch book details', e);
+        return null;
+      }
+    }
+
+    // Strip Google's embedded HTML tags from descriptions and break at the nearest sentence
+    // boundary near the limit so truncation reads cleanly.
+    function truncateText(s, maxLen) {
+      if (!s) return '';
+      const clean = s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+      if (clean.length <= maxLen) return clean;
+      const slice = clean.substring(0, maxLen);
+      const lastSentenceEnd = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('! '), slice.lastIndexOf('? '));
+      if (lastSentenceEnd > maxLen * 0.55) {
+        return slice.substring(0, lastSentenceEnd + 1);
+      }
+      return slice.trim() + '…';
+    }
+
     // ---- Book search (Google Books) ----
     async function runBookSearch(term) {
       const resultsEl = document.getElementById('searchResults');
@@ -886,20 +927,45 @@
         return;
       }
 
-      // Fetch cover (best effort — null is fine, falls back to no image)
-      const cover = await fetchCover(pick.title, pick.author);
+      // Pull cover + blurb + page count + year in a single call (cached, so re-rolls are cheap)
+      const details   = await fetchBookDetails(pick.title, pick.author);
+      const cover     = details?.cover || null;
+      const blurb     = truncateText(details?.description, 280);
+      const pageCount = details?.pageCount || null;
+      const year      = details?.publishedDate ? String(details.publishedDate).substring(0, 4) : null;
+
       const profile = buildTasteProfile(finishedBooks);
       currentMystery = { book: pick, isStretch, cover };
 
       const coverHtml = cover ? `<img src="${escapeHtml(cover)}" alt="cover" class="modal-cover" />` : '';
+      const yearStr   = year ? ` <span class="opacity-60">(${escapeHtml(year)})</span>` : '';
+      const genrePillsHtml = pick.genres.length
+        ? `<div class="tag-pills mt-2">${pick.genres.map(g => `<span class="tag-pill">${escapeHtml(g)}</span>`).join('')}</div>`
+        : '';
+
+      // Compact meta line: "~328 pages · slow burn"
+      const metaParts = [];
+      if (pageCount) metaParts.push(`${pageCount} pages`);
+      if (pick.pace) metaParts.push(pick.pace.toLowerCase());
+      const metaHtml = metaParts.length
+        ? `<p class="text-xs opacity-70 mt-2">${escapeHtml(metaParts.join(' · '))}</p>`
+        : '';
+
+      const blurbHtml = blurb
+        ? `<p class="text-sm leading-relaxed mt-3" style="opacity:.85">${escapeHtml(blurb)}</p>`
+        : '';
+
       const reasoning = reasoningFor(pick, profile, isStretch);
 
       contentEl.innerHTML = `
         ${coverHtml}
         <h3 class="text-lg font-bold leading-tight">${escapeHtml(pick.title)}</h3>
-        <p class="opacity-70 text-sm">${escapeHtml(pick.author)}</p>
-        <p class="text-xs opacity-60 mt-2 mb-2"><em>${escapeHtml(reasoning)}</em></p>
+        <p class="opacity-70 text-sm">${escapeHtml(pick.author)}${yearStr}</p>
+        ${genrePillsHtml}
+        ${metaHtml}
         <div style="clear:both"></div>
+        ${blurbHtml}
+        <p class="text-xs opacity-60 mt-3 italic">${escapeHtml(reasoning)}</p>
       `;
 
       document.getElementById('addMysteryBtn').disabled = false;
