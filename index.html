@@ -214,16 +214,56 @@
     }
     .selected-card img { width: 56px; height: 84px; object-fit: cover; border-radius: 3px; box-shadow: 0 2px 4px rgba(0,0,0,.18); flex-shrink: 0; background: var(--paper-shade); }
     .hidden { display: none !important; }
+
+    /* ---------- view switcher (Shelf / Bedside) ---------- */
+    .view-switcher {
+      display: flex; justify-content: center; gap: 6px;
+      padding: 0 16px;
+      margin: 0 0 8px;
+    }
+    .view-tab {
+      background: transparent; border: none;
+      padding: 6px 18px;
+      font-size: 14px; font-family: inherit;
+      color: var(--ink);
+      opacity: 0.45;
+      cursor: pointer;
+      border-radius: 999px;
+      letter-spacing: 0.02em;
+      transition: opacity .15s ease, background .15s ease;
+    }
+    .view-tab:hover { opacity: 0.85; }
+    .view-tab.active {
+      opacity: 1;
+      background: rgba(59,36,24,.10);
+      font-weight: 600;
+    }
+
+    /* Bedside view — softer dusty wall colour so the switch feels like a different room */
+    body[data-view="bedside"] {
+      background:
+        repeating-linear-gradient(0deg, transparent 0 22px, rgba(89,48,75,.04) 22px 23px),
+        linear-gradient(180deg, #f0e4ea, #e6d6dd);
+    }
+    body[data-view="bedside"] .view-tab.active { background: rgba(89,48,75,.16); }
+
+    /* Hide rating + tag groups in the add modal when adding to the bedside (you haven't read it yet) */
+    #addModal[data-mode="bedside"] .review-only { display: none; }
   </style>
 </head>
 <body>
   <header class="max-w-3xl mx-auto px-4 pt-6 pb-3 flex items-end justify-between">
     <div>
       <h1 class="text-3xl font-bold tracking-tight">Bookshelf</h1>
-      <p class="text-sm opacity-70 italic">finished books look better on a shelf</p>
+      <p id="subtitle" class="text-sm opacity-70 italic">finished books look better on a shelf</p>
     </div>
     <button id="profileBtn" class="profile-chip" type="button">signing in...</button>
   </header>
+
+  <nav class="view-switcher max-w-3xl mx-auto" role="tablist" aria-label="Section">
+    <button class="view-tab" data-view="bookshelf" type="button" role="tab" aria-selected="true">Shelf</button>
+    <button class="view-tab" data-view="bedside" type="button" role="tab" aria-selected="false">Bedside</button>
+  </nav>
 
   <main id="shelves" class="max-w-3xl mx-auto px-2 pt-4 pb-32 space-y-7"></main>
 
@@ -269,13 +309,13 @@
         <input type="text" id="addAuthor" placeholder="Author" class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
       </div>
 
-      <div>
+      <div class="review-only">
         <label class="block text-sm opacity-70 mb-1">Rating (1-5)</label>
         <input type="number" id="addRating" min="1" max="5" value="5" required class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
       </div>
 
-      <!-- Tagged review fields — feed the recommendation engine -->
-      <div>
+      <!-- Tagged review fields — feed the recommendation engine; hidden when adding to bedside -->
+      <div class="review-only">
         <label class="chip-group-label">Genre <span class="opacity-50">(pick any)</span></label>
         <div id="genreChips" class="chip-group">
           <button type="button" class="chip" data-value="Literary fiction">Literary fiction</button>
@@ -294,7 +334,7 @@
         </div>
       </div>
 
-      <div>
+      <div class="review-only">
         <label class="chip-group-label">Pace <span class="opacity-50">(pick one)</span></label>
         <div id="paceChips" class="chip-group">
           <button type="button" class="chip" data-value="Slow burn">Slow burn</button>
@@ -303,7 +343,7 @@
         </div>
       </div>
 
-      <div>
+      <div class="review-only">
         <label class="chip-group-label">Tone <span class="opacity-50">(pick any)</span></label>
         <div id="toneChips" class="chip-group">
           <button type="button" class="chip" data-value="Dark">Dark</button>
@@ -318,7 +358,7 @@
         </div>
       </div>
 
-      <div>
+      <div class="review-only">
         <label class="chip-group-label">Length felt <span class="opacity-50">(pick one)</span></label>
         <div id="lengthChips" class="chip-group">
           <button type="button" class="chip" data-value="Too short">Too short</button>
@@ -390,6 +430,29 @@
     // Initial paint before auth resolves
     document.body.dataset.profile = activeProfile;
     document.title = `${activeProfile[0].toUpperCase() + activeProfile.slice(1)}'s Bookshelf`;
+
+    // ---- View state: Shelf (finished) vs Bedside (planned/to-read) ----
+    let activeView = localStorage.getItem('bookshelf:view') || 'bookshelf';
+    const VIEW_SUBTITLES = {
+      bookshelf: 'finished books look better on a shelf',
+      bedside:   "what's next on the pile",
+    };
+    function setActiveView(view) {
+      if (view !== 'bookshelf' && view !== 'bedside') return;
+      activeView = view;
+      localStorage.setItem('bookshelf:view', view);
+      document.body.dataset.view = view;
+      document.querySelectorAll('.view-tab').forEach(tab => {
+        const isActive = tab.dataset.view === view;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      const subtitleEl = document.getElementById('subtitle');
+      if (subtitleEl) subtitleEl.textContent = VIEW_SUBTITLES[view];
+      renderShelves();
+    }
+    // Paint initial state before auth/data resolve so the tabs+wall match localStorage
+    document.body.dataset.view = activeView;
 
     const MIN_SHELVES = 3;
 
@@ -542,7 +605,12 @@
     }
 
     function openAddModal() {
-      document.getElementById('addModal').showModal();
+      const isBedside = activeView === 'bedside';
+      const modal = document.getElementById('addModal');
+      modal.dataset.mode = isBedside ? 'bedside' : 'shelf';
+      document.getElementById('addTitleLabel').textContent = isBedside ? 'Add to your bedside' : 'Add a finished book';
+      document.getElementById('saveBookBtn').textContent   = isBedside ? 'Save to bedside'   : 'Save to shelf';
+      modal.showModal();
       // small delay so dialog finishes opening before focus
       setTimeout(() => document.getElementById('bookSearch').focus(), 50);
     }
@@ -632,12 +700,17 @@
       btn.textContent = 'Saving...';
       btn.disabled = true;
 
+      // Read mode set when the modal opened — survives view changes during edit
+      const modeAtOpen = document.getElementById('addModal').dataset.mode || 'shelf';
+      const status = modeAtOpen === 'bedside' ? 'bedside' : 'finished';
+
       try {
         const colorIdx = Math.floor(Math.random() * spineColors.length);
         await addDoc(collection(db, `users/${currentUser.uid}/books`), {
           title, author, rating, notes, cover: cover || null,
           coverAttempted: true,
           profile: activeProfile,
+          status,
           genres, pace, tone, lengthFelt,
           spine: spineColors[colorIdx],
           ink: inkColors[colorIdx],
@@ -650,7 +723,7 @@
         console.error('save failed', err);
         alert('Save failed — try again.');
       } finally {
-        btn.textContent = 'Save to shelf';
+        btn.textContent = status === 'bedside' ? 'Save to bedside' : 'Save to shelf';
         btn.disabled = false;
       }
     });
@@ -740,9 +813,13 @@
       const root = document.getElementById('shelves');
       root.innerHTML = '';
 
-      // Only show books belonging to the active profile.
-      // Books with no profile field (legacy from before the swap was added) default to 'anthony'.
-      const visibleBooks = books.filter(b => (b.profile || 'anthony') === activeProfile);
+      // Filter by active profile AND active view.
+      // Legacy: books without a profile default to 'anthony'; books without a status default to 'finished' (on the Shelf).
+      const expectedStatus = activeView === 'bedside' ? 'bedside' : 'finished';
+      const visibleBooks = books.filter(b =>
+        (b.profile || 'anthony') === activeProfile &&
+        (b.status  || 'finished') === expectedStatus
+      );
 
       // Pack books + the "+" slot into rows that fit. Each row becomes its own shelf.
       const containerWidth = root.clientWidth || 460;
@@ -815,8 +892,10 @@
         ? `<img src="${escapeHtml(b.cover)}" alt="cover of ${escapeHtml(b.title)}" class="modal-cover" />`
         : '';
       
-      // Collect any saved review tags (Genre, Pace, Tone, Length felt) for read-only display
-      const tags = [
+      const isBedside = (b.status || 'finished') === 'bedside';
+
+      // Review tags — only shown for finished books (bedside books aren't reviewed yet)
+      const tags = isBedside ? [] : [
         ...(b.genres || []),
         ...(b.pace ? [b.pace] : []),
         ...(b.tone || []),
@@ -826,26 +905,41 @@
         ? `<div class="tag-pills">${tags.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('')}</div>`
         : '';
 
+      // Stars are hidden for bedside books (no rating until read)
+      const starsBlock = isBedside
+        ? `<p class="text-xs italic opacity-60 mb-2">— on your bedside —</p>`
+        : `<p class="stars text-lg mb-1" aria-label="rating ${b.rating || 0} of 5">${stars(b.rating || 0)}</p>`;
+
+      // "no notes yet" only shown for finished books — bedside might just not have notes
+      const notesHtml = b.notes
+        ? `<p class="text-sm leading-relaxed">${escapeHtml(b.notes)}</p>`
+        : (isBedside ? '' : '<p class="text-sm leading-relaxed"><em class="opacity-60">no notes yet</em></p>');
+
+      const deleteLabel = isBedside ? 'Remove from bedside' : 'Delete book';
+
       c.innerHTML = `
         ${cover}
         <h2 id="modalTitle" class="text-xl font-bold leading-tight">${escapeHtml(b.title)}</h2>
         <p class="opacity-70 text-sm mb-2">${escapeHtml(b.author)}</p>
-        <p class="stars text-lg mb-1" aria-label="rating ${b.rating} of 5">${stars(b.rating)}</p>
+        ${starsBlock}
         ${tagsHtml}
-        <p class="text-sm leading-relaxed">${b.notes ? escapeHtml(b.notes) : '<em class="opacity-60">no notes yet</em>'}</p>
+        ${notesHtml}
         <div style="clear:both"></div>
         <div class="mt-6 pt-4 border-t border-[rgba(59,36,24,.1)] text-right">
-          <button type="button" id="deleteBookBtn" class="text-[#8b3a3a] text-sm font-semibold opacity-80 hover:opacity-100">Delete book</button>
+          <button type="button" id="deleteBookBtn" class="text-[#8b3a3a] text-sm font-semibold opacity-80 hover:opacity-100">${deleteLabel}</button>
         </div>
       `;
-      
+
       // Wire up the delete button
       document.getElementById('deleteBookBtn').addEventListener('click', async () => {
-        if (confirm(`Are you sure you want to remove "${b.title}" from your shelf?`)) {
+        const confirmMsg = isBedside
+          ? `Remove "${b.title}" from your bedside?`
+          : `Are you sure you want to remove "${b.title}" from your shelf?`;
+        if (confirm(confirmMsg)) {
           const btn = document.getElementById('deleteBookBtn');
-          btn.textContent = 'Deleting...';
+          btn.textContent = isBedside ? 'Removing...' : 'Deleting...';
           btn.disabled = true;
-          
+
           await deleteDoc(doc(db, `users/${currentUser.uid}/books`, b.id));
           dlg.close();
         }
@@ -861,6 +955,13 @@
       if (!currentUser) return; // ignore taps while still signing in
       setActiveProfile(activeProfile === 'anthony' ? 'amy' : 'anthony');
     });
+
+    // View tabs — tap to swap between Shelf (finished) and Bedside (to-read).
+    document.querySelectorAll('.view-tab').forEach(tab => {
+      tab.addEventListener('click', () => setActiveView(tab.dataset.view));
+    });
+    // Initial activation: marks the right tab .active and writes the right subtitle.
+    setActiveView(activeView);
 
     // Re-pack shelves when the container width changes (window resize, phone rotation).
     // Debounced so a drag-resize doesn't fire on every pixel.
