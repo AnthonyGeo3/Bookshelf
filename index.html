@@ -81,6 +81,23 @@
     /* Face-out — books with a cover: cover art shown as background. Width set inline (≈2/3 of height). */
     .book.book-face { /* width comes from JS */ }
 
+    /* Mystery "?" tile — appears on the Bedside only, taps to surface a recommendation */
+    .book.book-mystery {
+      background: linear-gradient(135deg, #2e1b4a, #4a3b6b 45%, #6b4a8d 100%);
+      color: #f4ecd8;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 54px; font-weight: 700;
+      font-family: ui-serif, Georgia, "Times New Roman", serif;
+      text-shadow: 0 0 14px rgba(255,255,255,.18);
+      position: relative;
+    }
+    .book.book-mystery::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.12), transparent 55%);
+      pointer-events: none;
+    }
+
     .book:nth-child(4n) { transform: rotate(-1.2deg); }
     .book:nth-child(7n) { transform: rotate(1.4deg); }
     .book:nth-child(4n):hover, .book:nth-child(4n):focus-visible,
@@ -268,6 +285,17 @@
   <main id="shelves" class="max-w-3xl mx-auto px-2 pt-4 pb-32 space-y-7"></main>
 
   <button id="addBtn" class="fab" type="button" aria-label="Add a finished book">+</button>
+
+  <dialog id="mysteryModal" aria-labelledby="mysteryTitleLabel">
+    <form method="dialog" class="modal-inner">
+      <h2 id="mysteryTitleLabel" class="text-xl font-bold leading-tight mb-3">A book for you…</h2>
+      <div id="mysteryContent"></div>
+      <div class="flex gap-2 mt-4">
+        <button type="button" id="tryAnotherBtn" class="btn-wood flex-1 bg-opacity-20 bg-black text-[var(--ink)]">Try another</button>
+        <button type="button" id="addMysteryBtn" class="btn-wood flex-1">Add to bedside</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="bookModal" aria-labelledby="modalTitle">
     <form method="dialog" class="modal-inner">
@@ -460,6 +488,151 @@
     const spineColors = ['#5a2828', '#2d4a2b', '#4a3b6b', '#b06a2c', '#1d3557', '#7a5230', '#3d5a3d'];
     const inkColors = ['#f5e6c8', '#e8d8a0', '#f0e6d0', '#f4ecd8', '#f1faee', '#f4d27a', '#e8d8a0'];
 
+    // ---- Curated classics list — the candidate pool for the Mystery recommendation ----
+    // Tagged using exactly the chip vocabulary so the scorer can compare against the user's taste profile.
+    const CLASSICS = [
+      { title: 'Beloved',                          author: 'Toni Morrison',           genres: ['Literary fiction','Classic'],                       tone: ['Dark','Contemplative','Bleak'],           pace: 'Slow burn' },
+      { title: 'One Hundred Years of Solitude',    author: 'Gabriel García Márquez',  genres: ['Literary fiction','Classic'],                       tone: ['Contemplative','Playful'],                pace: 'Slow burn' },
+      { title: 'Pride and Prejudice',              author: 'Jane Austen',             genres: ['Classic','Romance'],                                tone: ['Witty','Romantic','Playful'],             pace: 'Steady' },
+      { title: 'Crime and Punishment',             author: 'Fyodor Dostoyevsky',      genres: ['Literary fiction','Classic'],                       tone: ['Dark','Tense','Contemplative'],           pace: 'Slow burn' },
+      { title: 'Anna Karenina',                    author: 'Leo Tolstoy',             genres: ['Classic','Literary fiction','Romance'],             tone: ['Contemplative','Romantic'],               pace: 'Slow burn' },
+      { title: 'Jane Eyre',                        author: 'Charlotte Brontë',        genres: ['Classic','Romance'],                                tone: ['Earnest','Tense','Romantic'],             pace: 'Steady' },
+      { title: 'Middlemarch',                      author: 'George Eliot',            genres: ['Classic','Literary fiction'],                       tone: ['Contemplative','Earnest'],                pace: 'Slow burn' },
+      { title: 'Great Expectations',               author: 'Charles Dickens',         genres: ['Classic','Literary fiction'],                       tone: ['Earnest','Contemplative'],                pace: 'Steady' },
+      { title: 'The Picture of Dorian Gray',       author: 'Oscar Wilde',             genres: ['Classic','Literary fiction','Horror'],              tone: ['Dark','Witty'],                           pace: 'Steady' },
+      { title: 'Catch-22',                         author: 'Joseph Heller',           genres: ['Classic','Literary fiction'],                       tone: ['Dark','Witty','Playful'],                 pace: 'Steady' },
+      { title: 'Slaughterhouse-Five',              author: 'Kurt Vonnegut',           genres: ['Classic','Sci-fi','Literary fiction'],              tone: ['Witty','Bleak','Playful'],                pace: 'Steady' },
+      { title: 'The Old Man and the Sea',          author: 'Ernest Hemingway',        genres: ['Classic','Literary fiction'],                       tone: ['Contemplative','Earnest'],                pace: 'Slow burn' },
+      { title: 'Of Mice and Men',                  author: 'John Steinbeck',          genres: ['Classic','Literary fiction'],                       tone: ['Bleak','Earnest'],                        pace: 'Steady' },
+      { title: 'Things Fall Apart',                author: 'Chinua Achebe',           genres: ['Classic','Literary fiction','Historical fiction'],  tone: ['Earnest','Bleak'],                        pace: 'Steady' },
+      { title: 'The Road',                         author: 'Cormac McCarthy',         genres: ['Literary fiction','Sci-fi'],                        tone: ['Bleak','Dark','Tense'],                   pace: 'Steady' },
+      { title: 'Never Let Me Go',                  author: 'Kazuo Ishiguro',          genres: ['Literary fiction','Sci-fi'],                        tone: ['Contemplative','Bleak'],                  pace: 'Steady' },
+      { title: 'The Remains of the Day',           author: 'Kazuo Ishiguro',          genres: ['Literary fiction'],                                 tone: ['Contemplative','Bleak'],                  pace: 'Slow burn' },
+      { title: 'Norwegian Wood',                   author: 'Haruki Murakami',         genres: ['Literary fiction'],                                 tone: ['Contemplative','Bleak','Romantic'],       pace: 'Slow burn' },
+      { title: 'Kafka on the Shore',               author: 'Haruki Murakami',         genres: ['Literary fiction'],                                 tone: ['Contemplative','Dark'],                   pace: 'Slow burn' },
+      { title: 'Lincoln in the Bardo',             author: 'George Saunders',         genres: ['Literary fiction','Historical fiction'],            tone: ['Contemplative','Bleak','Playful'],        pace: 'Slow burn' },
+      { title: '1984',                             author: 'George Orwell',           genres: ['Sci-fi','Classic','Literary fiction'],              tone: ['Dark','Bleak','Tense'],                   pace: 'Steady' },
+      { title: 'Brave New World',                  author: 'Aldous Huxley',           genres: ['Sci-fi','Classic'],                                 tone: ['Dark','Bleak','Contemplative'],           pace: 'Steady' },
+      { title: 'Fahrenheit 451',                   author: 'Ray Bradbury',            genres: ['Sci-fi','Classic'],                                 tone: ['Dark','Tense','Bleak'],                   pace: 'Steady' },
+      { title: 'Foundation',                       author: 'Isaac Asimov',            genres: ['Sci-fi','Classic'],                                 tone: ['Contemplative'],                          pace: 'Steady' },
+      { title: 'Neuromancer',                      author: 'William Gibson',          genres: ['Sci-fi','Classic'],                                 tone: ['Dark','Tense'],                           pace: 'Propulsive' },
+      { title: 'The Left Hand of Darkness',        author: 'Ursula K. Le Guin',       genres: ['Sci-fi','Classic','Literary fiction'],              tone: ['Contemplative'],                          pace: 'Slow burn' },
+      { title: 'Hyperion',                         author: 'Dan Simmons',             genres: ['Sci-fi'],                                           tone: ['Contemplative','Dark'],                   pace: 'Slow burn' },
+      { title: 'Snow Crash',                       author: 'Neal Stephenson',         genres: ['Sci-fi'],                                           tone: ['Witty','Playful'],                        pace: 'Propulsive' },
+      { title: 'The Lord of the Rings',            author: 'J.R.R. Tolkien',          genres: ['Fantasy','Classic'],                                tone: ['Hopeful','Earnest','Contemplative'],      pace: 'Slow burn' },
+      { title: 'A Wizard of Earthsea',             author: 'Ursula K. Le Guin',       genres: ['Fantasy','Classic'],                                tone: ['Contemplative','Earnest'],                pace: 'Steady' },
+      { title: 'The Name of the Wind',             author: 'Patrick Rothfuss',        genres: ['Fantasy'],                                          tone: ['Contemplative','Tense'],                  pace: 'Steady' },
+      { title: 'American Gods',                    author: 'Neil Gaiman',             genres: ['Fantasy','Literary fiction'],                       tone: ['Dark','Contemplative','Witty'],           pace: 'Steady' },
+      { title: 'Mistborn: The Final Empire',       author: 'Brandon Sanderson',       genres: ['Fantasy'],                                          tone: ['Tense','Hopeful'],                        pace: 'Propulsive' },
+      { title: 'The Big Sleep',                    author: 'Raymond Chandler',        genres: ['Mystery/Thriller','Classic'],                       tone: ['Dark','Witty','Tense'],                   pace: 'Propulsive' },
+      { title: 'And Then There Were None',         author: 'Agatha Christie',         genres: ['Mystery/Thriller','Classic'],                       tone: ['Tense','Dark'],                           pace: 'Propulsive' },
+      { title: 'Tinker Tailor Soldier Spy',        author: 'John le Carré',           genres: ['Mystery/Thriller','Classic'],                       tone: ['Tense','Contemplative','Bleak'],          pace: 'Slow burn' },
+      { title: 'The Silence of the Lambs',         author: 'Thomas Harris',           genres: ['Mystery/Thriller','Horror'],                        tone: ['Dark','Tense'],                           pace: 'Propulsive' },
+      { title: 'Gone Girl',                        author: 'Gillian Flynn',           genres: ['Mystery/Thriller'],                                 tone: ['Dark','Tense','Witty'],                   pace: 'Propulsive' },
+      { title: 'Frankenstein',                     author: 'Mary Shelley',            genres: ['Horror','Sci-fi','Classic'],                        tone: ['Dark','Contemplative','Bleak'],           pace: 'Slow burn' },
+      { title: 'Dracula',                          author: 'Bram Stoker',             genres: ['Horror','Classic'],                                 tone: ['Dark','Tense'],                           pace: 'Steady' },
+      { title: 'The Haunting of Hill House',       author: 'Shirley Jackson',         genres: ['Horror','Classic'],                                 tone: ['Dark','Tense','Contemplative'],           pace: 'Steady' },
+      { title: 'The Shining',                      author: 'Stephen King',            genres: ['Horror'],                                           tone: ['Dark','Tense'],                           pace: 'Steady' },
+      { title: 'Sapiens: A Brief History of Humankind', author: 'Yuval Noah Harari',  genres: ['Non-fiction','Pop science'],                        tone: ['Contemplative','Witty'],                  pace: 'Steady' },
+      { title: 'A Brief History of Time',          author: 'Stephen Hawking',         genres: ['Pop science','Non-fiction'],                        tone: ['Contemplative'],                          pace: 'Steady' },
+      { title: 'Thinking, Fast and Slow',          author: 'Daniel Kahneman',         genres: ['Non-fiction','Pop science'],                        tone: ['Contemplative'],                          pace: 'Slow burn' },
+      { title: 'Meditations',                      author: 'Marcus Aurelius',         genres: ['Philosophy','Classic','Non-fiction'],               tone: ['Contemplative','Earnest'],                pace: 'Slow burn' },
+      { title: "Man's Search for Meaning",         author: 'Viktor E. Frankl',        genres: ['Non-fiction','Philosophy','Biography/Memoir','Classic'], tone: ['Earnest','Contemplative','Bleak','Hopeful'], pace: 'Steady' },
+      { title: 'The Body Keeps the Score',         author: 'Bessel van der Kolk',     genres: ['Non-fiction'],                                      tone: ['Contemplative','Earnest'],                pace: 'Steady' },
+      { title: 'The Vegetarian',                   author: 'Han Kang',                genres: ['Literary fiction'],                                 tone: ['Dark','Contemplative','Bleak'],           pace: 'Steady' },
+      { title: 'Convenience Store Woman',          author: 'Sayaka Murata',           genres: ['Literary fiction'],                                 tone: ['Witty','Contemplative','Playful'],        pace: 'Steady' },
+      { title: 'Klara and the Sun',                author: 'Kazuo Ishiguro',          genres: ['Literary fiction','Sci-fi'],                        tone: ['Contemplative','Earnest','Bleak'],        pace: 'Slow burn' },
+    ];
+
+    // ---- Recommendation engine ----
+    // Build a normalised taste profile from the user's finished, tagged books.
+    // Higher-rated books carry more weight.
+    function buildTasteProfile(finishedBooks) {
+      const genreScores = {};
+      const toneScores = {};
+      const paceCounts = { 'Slow burn': 0, 'Steady': 0, 'Propulsive': 0 };
+      for (const book of finishedBooks) {
+        const weight = (book.rating || 3) / 5;
+        (book.genres || []).forEach(g => { genreScores[g] = (genreScores[g] || 0) + weight; });
+        (book.tone   || []).forEach(t => { toneScores[t]  = (toneScores[t]  || 0) + weight; });
+        if (book.pace) paceCounts[book.pace] = (paceCounts[book.pace] || 0) + weight;
+      }
+      const maxG = Math.max(1, ...Object.values(genreScores));
+      const maxT = Math.max(1, ...Object.values(toneScores));
+      const preferredPace = Object.entries(paceCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Steady';
+      return {
+        genreScores: Object.fromEntries(Object.entries(genreScores).map(([k, v]) => [k, v / maxG])),
+        toneScores:  Object.fromEntries(Object.entries(toneScores).map(([k, v])  => [k, v / maxT])),
+        preferredPace,
+        hasData: finishedBooks.length > 0,
+      };
+    }
+
+    function scoreCandidate(candidate, profile) {
+      const gAvg = candidate.genres.length === 0 ? 0
+        : candidate.genres.reduce((s, g) => s + (profile.genreScores[g] || 0), 0) / candidate.genres.length;
+      const tAvg = candidate.tone.length === 0 ? 0
+        : candidate.tone.reduce((s, t) => s + (profile.toneScores[t] || 0), 0) / candidate.tone.length;
+      const paceMatch = candidate.pace === profile.preferredPace ? 1.0 : 0.5;
+      return 0.5 * gAvg + 0.3 * tAvg + 0.2 * paceMatch;
+    }
+
+    // 25% of the time, pick a stretch — a low-scoring candidate, deliberately outside taste.
+    function shouldStretch() { return Math.random() < 0.25; }
+
+    function pickRecommendation(classics, finishedBooks, bedsideBooks, isStretch) {
+      const excluded = new Set([
+        ...finishedBooks.map(b => `${(b.title || '').toLowerCase()}|${(b.author || '').toLowerCase()}`),
+        ...bedsideBooks .map(b => `${(b.title || '').toLowerCase()}|${(b.author || '').toLowerCase()}`),
+      ]);
+      const candidates = classics.filter(c =>
+        !excluded.has(`${c.title.toLowerCase()}|${c.author.toLowerCase()}`)
+      );
+      if (candidates.length === 0) return null;
+
+      const profile = buildTasteProfile(finishedBooks);
+      if (!profile.hasData) {
+        // No taste data yet — just pick at random
+        return candidates[Math.floor(Math.random() * candidates.length)];
+      }
+
+      const scored = candidates
+        .map(c => ({ book: c, score: scoreCandidate(c, profile) }))
+        .sort((a, b) => b.score - a.score);
+
+      if (isStretch) {
+        // Pick from the bottom 40% — deliberately outside the comfort zone
+        const stretchPool = scored.slice(Math.floor(scored.length * 0.6));
+        const pick = stretchPool[Math.floor(Math.random() * Math.min(stretchPool.length, 10))];
+        return pick ? pick.book : scored[scored.length - 1].book;
+      }
+
+      // Otherwise: weighted random from the top 5 — gives variety without straying far
+      const topN = Math.min(5, scored.length);
+      const top = scored.slice(0, topN);
+      const weights = top.map((_, i) => topN - i);
+      const total = weights.reduce((a, b) => a + b, 0);
+      let r = Math.random() * total;
+      for (let i = 0; i < top.length; i++) {
+        r -= weights[i];
+        if (r < 0) return top[i].book;
+      }
+      return top[0].book;
+    }
+
+    function reasoningFor(candidate, profile, isStretch) {
+      if (isStretch) return 'a stretch pick — outside your usual taste. worth a try?';
+      if (!profile.hasData) return 'from the classics list — tag a few finished books to make these smarter';
+
+      const matchedGenres = candidate.genres.filter(g => (profile.genreScores[g] || 0) >= 0.5);
+      const matchedTones  = candidate.tone .filter(t => (profile.toneScores[t]  || 0) >= 0.5);
+      const bits = [];
+      if (matchedTones.length)  bits.push(matchedTones.slice(0, 2).join(', ').toLowerCase());
+      if (matchedGenres.length) bits.push(matchedGenres.slice(0, 2).join(' & ').toLowerCase());
+      if (bits.length === 0) return 'a quieter match — fits your overall taste roughly';
+      return `you tend to like ${bits.join(' / ')} books`;
+    }
+
     // Auth & Data syncing
     onAuthStateChanged(auth, (user) => {
       if (user) {
@@ -592,6 +765,9 @@
     function resetAddForm() {
       selectedBook = null;
       lastQuery = '';
+      const modal = document.getElementById('addModal');
+      modal.removeAttribute('data-editing');
+      document.getElementById('changeSelection').style.display = '';
       document.getElementById('searchSection').classList.remove('hidden');
       document.getElementById('manualSection').classList.add('hidden');
       document.getElementById('selectedSection').classList.add('hidden');
@@ -608,11 +784,39 @@
       const isBedside = activeView === 'bedside';
       const modal = document.getElementById('addModal');
       modal.dataset.mode = isBedside ? 'bedside' : 'shelf';
+      modal.removeAttribute('data-editing'); // not in edit mode for the normal add flow
       document.getElementById('addTitleLabel').textContent = isBedside ? 'Add to your bedside' : 'Add a finished book';
       document.getElementById('saveBookBtn').textContent   = isBedside ? 'Save to bedside'   : 'Save to shelf';
       modal.showModal();
       // small delay so dialog finishes opening before focus
       setTimeout(() => document.getElementById('bookSearch').focus(), 50);
+    }
+
+    // Open the add modal in "edit" mode to convert a bedside book into a finished, reviewed one.
+    function openAddModalForBedsideConvert(b) {
+      const modal = document.getElementById('addModal');
+      modal.dataset.mode = 'shelf';        // show review fields
+      modal.dataset.editing = b.id;        // mark as editing — form submit will updateDoc instead of addDoc
+      document.getElementById('addTitleLabel').textContent = 'How was it?';
+      document.getElementById('saveBookBtn').textContent   = 'Save to shelf';
+
+      // Pre-fill the selected book — skip the search section entirely
+      selectedBook = { title: b.title, author: b.author, cover: b.cover || null };
+      document.getElementById('searchSection').classList.add('hidden');
+      document.getElementById('manualSection').classList.add('hidden');
+      document.getElementById('selectedSection').classList.remove('hidden');
+      const coverEl = document.getElementById('selectedCover');
+      if (b.cover) { coverEl.src = b.cover; coverEl.style.display = ''; }
+      else         { coverEl.removeAttribute('src'); coverEl.style.display = 'none'; }
+      document.getElementById('selectedTitle').textContent  = b.title;
+      document.getElementById('selectedAuthor').textContent = b.author;
+      // Lock the book selection — can't "change" mid-conversion
+      document.getElementById('changeSelection').style.display = 'none';
+
+      // Pre-fill notes if any were saved on the bedside entry
+      document.getElementById('addNotes').value = b.notes || '';
+
+      modal.showModal();
     }
 
     // ---- Chip group helpers (review tagging) ----
@@ -649,6 +853,100 @@
         document.querySelectorAll(`#${g.id} .chip.active`).forEach(c => c.classList.remove('active'));
       });
     }
+
+    // ---- Mystery recommendation flow ----
+    let currentMystery = null; // { book, isStretch, cover }
+
+    async function openMysteryRecommendation() {
+      const dlg = document.getElementById('mysteryModal');
+      document.getElementById('mysteryContent').innerHTML = '<div class="search-status">picking a book…</div>';
+      document.getElementById('addMysteryBtn').disabled = true;
+      document.getElementById('tryAnotherBtn').disabled = true;
+      dlg.showModal();
+      await pickAndRenderMystery();
+    }
+
+    async function pickAndRenderMystery() {
+      // Profile is built from FINISHED books in the active profile only.
+      const finishedBooks = books.filter(b =>
+        (b.profile || 'anthony') === activeProfile &&
+        (b.status  || 'finished') === 'finished'
+      );
+      const bedsideBooks = books.filter(b =>
+        (b.profile || 'anthony') === activeProfile &&
+        (b.status  || 'finished') === 'bedside'
+      );
+
+      const isStretch = shouldStretch();
+      const pick = pickRecommendation(CLASSICS, finishedBooks, bedsideBooks, isStretch);
+
+      const contentEl = document.getElementById('mysteryContent');
+      if (!pick) {
+        contentEl.innerHTML = '<div class="search-status">no more recs — you\'ve covered the whole list. tell me to expand it.</div>';
+        return;
+      }
+
+      // Fetch cover (best effort — null is fine, falls back to no image)
+      const cover = await fetchCover(pick.title, pick.author);
+      const profile = buildTasteProfile(finishedBooks);
+      currentMystery = { book: pick, isStretch, cover };
+
+      const coverHtml = cover ? `<img src="${escapeHtml(cover)}" alt="cover" class="modal-cover" />` : '';
+      const reasoning = reasoningFor(pick, profile, isStretch);
+
+      contentEl.innerHTML = `
+        ${coverHtml}
+        <h3 class="text-lg font-bold leading-tight">${escapeHtml(pick.title)}</h3>
+        <p class="opacity-70 text-sm">${escapeHtml(pick.author)}</p>
+        <p class="text-xs opacity-60 mt-2 mb-2"><em>${escapeHtml(reasoning)}</em></p>
+        <div style="clear:both"></div>
+      `;
+
+      document.getElementById('addMysteryBtn').disabled = false;
+      document.getElementById('tryAnotherBtn').disabled = false;
+    }
+
+    document.getElementById('tryAnotherBtn').addEventListener('click', () => {
+      document.getElementById('mysteryContent').innerHTML = '<div class="search-status">picking another…</div>';
+      document.getElementById('addMysteryBtn').disabled = true;
+      document.getElementById('tryAnotherBtn').disabled = true;
+      pickAndRenderMystery();
+    });
+
+    document.getElementById('addMysteryBtn').addEventListener('click', async () => {
+      if (!currentMystery || !currentUser) return;
+      const { book, cover } = currentMystery;
+      const btn = document.getElementById('addMysteryBtn');
+      btn.textContent = 'Adding…';
+      btn.disabled = true;
+      try {
+        const colorIdx = Math.floor(Math.random() * spineColors.length);
+        await addDoc(collection(db, `users/${currentUser.uid}/books`), {
+          title: book.title,
+          author: book.author,
+          cover: cover || null,
+          coverAttempted: true,
+          profile: activeProfile,
+          status: 'bedside',
+          rating: null,
+          notes: '',
+          genres: [], tone: [], pace: null, lengthFelt: null,
+          spine: spineColors[colorIdx],
+          ink: inkColors[colorIdx],
+          height: Math.floor(Math.random() * (190 - 140 + 1)) + 140,
+          width:  Math.floor(Math.random() * (46  - 30  + 1)) + 30,
+          createdAt: serverTimestamp(),
+          fromRecommendation: true,
+        });
+        document.getElementById('mysteryModal').close();
+      } catch (err) {
+        console.error('mystery save failed', err);
+        alert('Save failed — try again.');
+      } finally {
+        btn.textContent = 'Add to bedside';
+        btn.disabled = false;
+      }
+    });
 
     // ---- Cover backfill: one-shot per session, fills in covers for books that don't have one ----
     async function backfillMissingCovers() {
@@ -701,23 +999,33 @@
       btn.disabled = true;
 
       // Read mode set when the modal opened — survives view changes during edit
-      const modeAtOpen = document.getElementById('addModal').dataset.mode || 'shelf';
+      const modal = document.getElementById('addModal');
+      const modeAtOpen = modal.dataset.mode || 'shelf';
+      const editingId = modal.dataset.editing || null;
       const status = modeAtOpen === 'bedside' ? 'bedside' : 'finished';
 
       try {
-        const colorIdx = Math.floor(Math.random() * spineColors.length);
-        await addDoc(collection(db, `users/${currentUser.uid}/books`), {
-          title, author, rating, notes, cover: cover || null,
-          coverAttempted: true,
-          profile: activeProfile,
-          status,
-          genres, pace, tone, lengthFelt,
-          spine: spineColors[colorIdx],
-          ink: inkColors[colorIdx],
-          height: Math.floor(Math.random() * (190 - 140 + 1)) + 140, // 140-190px
-          width:  Math.floor(Math.random() * (46  - 30  + 1)) + 30,  // 30-46px
-          createdAt: serverTimestamp()
-        });
+        if (editingId) {
+          // Editing existing — convert bedside → shelf, preserve original metadata, write review fields
+          await updateDoc(doc(db, `users/${currentUser.uid}/books`, editingId), {
+            rating, notes, status: 'finished',
+            genres, pace, tone, lengthFelt,
+          });
+        } else {
+          const colorIdx = Math.floor(Math.random() * spineColors.length);
+          await addDoc(collection(db, `users/${currentUser.uid}/books`), {
+            title, author, rating, notes, cover: cover || null,
+            coverAttempted: true,
+            profile: activeProfile,
+            status,
+            genres, pace, tone, lengthFelt,
+            spine: spineColors[colorIdx],
+            ink: inkColors[colorIdx],
+            height: Math.floor(Math.random() * (190 - 140 + 1)) + 140, // 140-190px
+            width:  Math.floor(Math.random() * (46  - 30  + 1)) + 30,  // 30-46px
+            createdAt: serverTimestamp()
+          });
+        }
         document.getElementById('addModal').close();
       } catch (err) {
         console.error('save failed', err);
@@ -784,8 +1092,10 @@
 
     // Sentinel for the "+" empty slot — packed alongside books so it always sits next to the last one.
     const SLOT_ITEM = Object.freeze({ isSlot: true, width: 38 });
+    // Sentinel for the mystery "?" tile — only appears on the Bedside (recommendation engine entry point)
+    const MYSTERY_ITEM = Object.freeze({ isMystery: true, width: 100, height: 160 });
 
-    // Pack a list of items (books + slot) into shelf rows that fit the container width.
+    // Pack a list of items (books + slot + mystery) into shelf rows that fit the container width.
     // Each output row will be its own shelf section (with its own plank).
     function packIntoRows(items, containerWidth) {
       const gap = 6;
@@ -795,7 +1105,7 @@
       let current = [];
       let curWidth = 0;
       for (const item of items) {
-        const w = item.isSlot ? item.width : bookDisplayWidth(item);
+        const w = (item.isSlot || item.isMystery) ? item.width : bookDisplayWidth(item);
         const widthWithGap = current.length > 0 ? gap + w : w;
         if (curWidth + widthWithGap > available && current.length > 0) {
           rows.push(current);
@@ -821,9 +1131,12 @@
         (b.status  || 'finished') === expectedStatus
       );
 
-      // Pack books + the "+" slot into rows that fit. Each row becomes its own shelf.
+      // On the Bedside, prepend the mystery "?" tile. Always append the "+" empty slot.
+      const items = activeView === 'bedside'
+        ? [MYSTERY_ITEM, ...visibleBooks, SLOT_ITEM]
+        : [...visibleBooks, SLOT_ITEM];
       const containerWidth = root.clientWidth || 460;
-      const rows = packIntoRows([...visibleBooks, SLOT_ITEM], containerWidth);
+      const rows = packIntoRows(items, containerWidth);
 
       // Always show at least MIN_SHELVES rows so the bookcase doesn't look bare.
       while (rows.length < MIN_SHELVES) rows.push([]);
@@ -845,6 +1158,16 @@
             slot.textContent = '+';
             slot.addEventListener('click', openAddModal);
             list.appendChild(slot);
+          } else if (item.isMystery) {
+            const myst = document.createElement('button');
+            myst.type = 'button';
+            myst.className = 'book book-mystery';
+            myst.style.width = item.width + 'px';
+            myst.style.minHeight = item.height + 'px';
+            myst.setAttribute('aria-label', 'A mystery recommendation');
+            myst.textContent = '?';
+            myst.addEventListener('click', openMysteryRecommendation);
+            list.appendChild(myst);
           } else {
             list.appendChild(makeBookEl(item));
           }
@@ -916,6 +1239,10 @@
         : (isBedside ? '' : '<p class="text-sm leading-relaxed"><em class="opacity-60">no notes yet</em></p>');
 
       const deleteLabel = isBedside ? 'Remove from bedside' : 'Delete book';
+      // For bedside books only: prominent "I've read this" button that opens the review/convert flow
+      const moveBlock = isBedside
+        ? `<button type="button" id="moveToShelfBtn" class="btn-wood mt-4">I've read this — move to shelf</button>`
+        : '';
 
       c.innerHTML = `
         ${cover}
@@ -925,6 +1252,7 @@
         ${tagsHtml}
         ${notesHtml}
         <div style="clear:both"></div>
+        ${moveBlock}
         <div class="mt-6 pt-4 border-t border-[rgba(59,36,24,.1)] text-right">
           <button type="button" id="deleteBookBtn" class="text-[#8b3a3a] text-sm font-semibold opacity-80 hover:opacity-100">${deleteLabel}</button>
         </div>
@@ -944,6 +1272,14 @@
           dlg.close();
         }
       });
+
+      // Bedside-only: "I've read this" opens the add modal in edit-convert mode
+      if (isBedside) {
+        document.getElementById('moveToShelfBtn').addEventListener('click', () => {
+          dlg.close();
+          openAddModalForBedsideConvert(b);
+        });
+      }
 
       dlg.showModal();
     }
