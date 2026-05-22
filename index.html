@@ -106,8 +106,19 @@
     .profile-chip {
       background: rgba(59,36,24,.08); padding: 4px 10px; border-radius: 999px;
       font-size: 12px; letter-spacing: 0.04em; border: 1px solid rgba(59,36,24,.15);
+      cursor: pointer; user-select: none;
+      transition: background .15s ease, border-color .15s ease, color .15s ease;
     }
-    
+    .profile-chip:hover { background: rgba(59,36,24,.14); }
+    body[data-profile="amy"] .profile-chip {
+      background: rgba(139, 58, 58, .10);
+      border-color: rgba(139, 58, 58, .28);
+      color: var(--accent);
+    }
+    body[data-profile="amy"] .profile-chip:hover {
+      background: rgba(139, 58, 58, .18);
+    }
+
     input, textarea { border-color: rgba(59,36,24,.2); outline-color: var(--wood-mid); }
   </style>
 </head>
@@ -177,6 +188,26 @@
 
     let currentUser = null;
     let books = [];
+
+    // Two named profiles on this device. Tap the chip to swap between them.
+    // Choice is per-device — anonymous auth means no cross-device sync.
+    const PROFILES = ['anthony', 'amy'];
+    let activeProfile = localStorage.getItem('bookshelf:profile') || 'anthony';
+
+    function setActiveProfile(name) {
+      if (!PROFILES.includes(name)) return;
+      activeProfile = name;
+      localStorage.setItem('bookshelf:profile', name);
+      const chip = document.getElementById('profileBtn');
+      if (chip && currentUser) chip.textContent = name;
+      document.body.dataset.profile = name;
+      document.title = `${name[0].toUpperCase() + name.slice(1)}'s Bookshelf`;
+      renderShelves();
+    }
+    // Initial paint before auth resolves
+    document.body.dataset.profile = activeProfile;
+    document.title = `${activeProfile[0].toUpperCase() + activeProfile.slice(1)}'s Bookshelf`;
+
     const BOOKS_PER_SHELF = 8;
     const MIN_SHELVES = 3;
 
@@ -188,7 +219,7 @@
     onAuthStateChanged(auth, (user) => {
       if (user) {
         currentUser = user;
-        document.getElementById('profileBtn').textContent = 'anthony';
+        document.getElementById('profileBtn').textContent = activeProfile;
         
         const q = query(collection(db, `users/${user.uid}/books`), orderBy('createdAt', 'asc'));
         onSnapshot(q, (snapshot) => {
@@ -238,6 +269,7 @@
 
       await addDoc(collection(db, `users/${currentUser.uid}/books`), {
         title, author, rating, notes, cover,
+        profile: activeProfile,
         spine: spineColors[colorIdx],
         ink: inkColors[colorIdx],
         height: Math.floor(Math.random() * (190 - 140 + 1)) + 140, // Random height 140-190px
@@ -271,7 +303,10 @@
       const root = document.getElementById('shelves');
       root.innerHTML = '';
 
-      const rows = chunk(books, BOOKS_PER_SHELF);
+      // Show only books belonging to the active profile.
+      // Books with no profile field (legacy from before the swap was added) default to 'anthony'.
+      const visibleBooks = books.filter(b => (b.profile || 'anthony') === activeProfile);
+      const rows = chunk(visibleBooks, BOOKS_PER_SHELF);
       while (rows.length < MIN_SHELVES) rows.push([]);
 
       rows.forEach((row, idx) => {
@@ -353,6 +388,12 @@
 
     document.getElementById('addBtn').addEventListener('click', () => {
       document.getElementById('addModal').showModal();
+    });
+
+    // Profile chip — tap to swap between anthony and amy (per-device, persisted in localStorage).
+    document.getElementById('profileBtn').addEventListener('click', () => {
+      if (!currentUser) return; // ignore taps while still signing in
+      setActiveProfile(activeProfile === 'anthony' ? 'amy' : 'anthony');
     });
 
     // ---- service worker registration ----
