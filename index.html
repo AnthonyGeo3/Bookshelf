@@ -142,6 +142,43 @@
     }
 
     input, textarea { border-color: rgba(59,36,24,.2); outline-color: var(--wood-mid); }
+
+    /* ---------- search results in add-book modal ---------- */
+    #searchResults { max-height: 18rem; overflow-y: auto; }
+    .search-result {
+      display: flex; gap: 10px; align-items: flex-start; width: 100%;
+      padding: 8px; border: none; background: transparent;
+      cursor: pointer; text-align: left; border-radius: 6px;
+      transition: background .15s ease;
+      color: var(--ink); font-family: inherit;
+    }
+    .search-result:hover, .search-result:focus-visible {
+      background: rgba(59,36,24,.08); outline: none;
+    }
+    .search-thumb, .search-thumb-fallback {
+      width: 36px; height: 54px; border-radius: 3px; flex-shrink: 0;
+      background: var(--paper-shade);
+      box-shadow: 0 1px 3px rgba(0,0,0,.18);
+    }
+    .search-thumb { object-fit: cover; }
+    .search-meta { flex: 1; min-width: 0; }
+    .search-title {
+      font-weight: 600; font-size: 14px; line-height: 1.2;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .search-author {
+      font-size: 12px; opacity: 0.7; margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .search-status { padding: 10px; font-size: 13px; opacity: 0.6; text-align: center; }
+    .selected-card {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 10px; border-radius: 8px;
+      border: 1px solid rgba(59,36,24,.15); background: rgba(59,36,24,.04);
+    }
+    .selected-card img { width: 56px; height: 84px; object-fit: cover; border-radius: 3px; box-shadow: 0 2px 4px rgba(0,0,0,.18); flex-shrink: 0; background: var(--paper-shade); }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -167,12 +204,36 @@
   <dialog id="addModal" aria-labelledby="addTitleLabel">
     <form id="addForm" class="modal-inner space-y-4">
       <h2 id="addTitleLabel" class="text-xl font-bold leading-tight">Add a finished book</h2>
-      <div>
-        <input type="text" id="addTitle" placeholder="Title" required class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+
+      <!-- Default: search Google Books -->
+      <div id="searchSection">
+        <label class="block text-sm opacity-70 mb-1">Find your book</label>
+        <input type="text" id="bookSearch" placeholder="Type a title or author…"
+               autocomplete="off"
+               class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+        <div id="searchResults" class="mt-2"></div>
+        <button type="button" id="manualEntryLink" class="mt-2 text-xs underline opacity-70">Can't find it? Add manually</button>
       </div>
-      <div>
-        <input type="text" id="addAuthor" placeholder="Author" required class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+
+      <!-- Shown after a search result is picked -->
+      <div id="selectedSection" class="hidden">
+        <label class="block text-sm opacity-70 mb-1">Selected book</label>
+        <div class="selected-card">
+          <img id="selectedCover" alt="" />
+          <div class="flex-1 min-w-0">
+            <p id="selectedTitle" class="font-bold leading-tight"></p>
+            <p id="selectedAuthor" class="text-sm opacity-70 mt-1"></p>
+          </div>
+          <button type="button" id="changeSelection" class="text-xs underline opacity-70 flex-shrink-0">change</button>
+        </div>
       </div>
+
+      <!-- Shown only if user opts out of search -->
+      <div id="manualSection" class="hidden space-y-3">
+        <input type="text" id="addTitle" placeholder="Title" class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+        <input type="text" id="addAuthor" placeholder="Author" class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+      </div>
+
       <div>
         <label class="block text-sm opacity-70 mb-1">Rating (1-5)</label>
         <input type="number" id="addRating" min="1" max="5" value="5" required class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
@@ -192,7 +253,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAHMaWQRXsAglvgPxsAfR0tmTNzSo67-Y4",
@@ -210,6 +271,12 @@
 
     let currentUser = null;
     let books = [];
+
+    // Add-book modal state (search, manual fallback, selected result)
+    let selectedBook = null;   // { title, author, cover }
+    let searchTimer = null;
+    let lastQuery = '';
+    let backfillTried = false; // one-shot cover backfill per session
 
     // Two named profiles on this device. Tap the chip to swap between them.
     // Choice is per-device — anonymous auth means no cross-device sync.
@@ -247,6 +314,11 @@
         onSnapshot(q, (snapshot) => {
           books = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           renderShelves();
+          // One-shot: retry cover fetch for any books that don't have one yet.
+          if (!backfillTried && books.length > 0) {
+            backfillTried = true;
+            backfillMissingCovers();
+          }
         });
       } else {
         currentUser = null;
@@ -272,38 +344,174 @@
       }
     }
 
-    // Form submission
+    // ---- Book search (Google Books) ----
+    async function runBookSearch(term) {
+      const resultsEl = document.getElementById('searchResults');
+      resultsEl.innerHTML = '<div class="search-status">searching…</div>';
+      try {
+        const q = encodeURIComponent(term);
+        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=6&printType=books`);
+        const data = await res.json();
+        const items = (data.items || []).filter(i => i.volumeInfo && i.volumeInfo.title);
+        if (items.length === 0) {
+          resultsEl.innerHTML = '<div class="search-status">no matches — try a different search</div>';
+          return;
+        }
+        resultsEl.innerHTML = '';
+        items.forEach(item => {
+          const vi = item.volumeInfo;
+          const title = vi.title;
+          const author = (vi.authors && vi.authors.length) ? vi.authors.join(', ') : 'Unknown';
+          const rawCover = (vi.imageLinks && vi.imageLinks.thumbnail) || '';
+          const cover = rawCover ? rawCover.replace('http:', 'https:') : '';
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'search-result';
+          row.innerHTML = `
+            ${cover
+              ? `<img src="${escapeHtml(cover)}" class="search-thumb" alt="" loading="lazy">`
+              : '<div class="search-thumb-fallback"></div>'}
+            <div class="search-meta">
+              <div class="search-title">${escapeHtml(title)}</div>
+              <div class="search-author">${escapeHtml(author)}</div>
+            </div>
+          `;
+          row.addEventListener('click', () => selectSearchResult(title, author, cover));
+          resultsEl.appendChild(row);
+        });
+      } catch (e) {
+        console.warn('book search failed', e);
+        resultsEl.innerHTML = '<div class="search-status">search failed — check your connection</div>';
+      }
+    }
+
+    function selectSearchResult(title, author, cover) {
+      selectedBook = { title, author, cover: cover || null };
+      document.getElementById('searchSection').classList.add('hidden');
+      document.getElementById('manualSection').classList.add('hidden');
+      document.getElementById('selectedSection').classList.remove('hidden');
+      const coverEl = document.getElementById('selectedCover');
+      if (cover) { coverEl.src = cover; coverEl.style.display = ''; }
+      else { coverEl.removeAttribute('src'); coverEl.style.display = 'none'; }
+      document.getElementById('selectedTitle').textContent = title;
+      document.getElementById('selectedAuthor').textContent = author;
+    }
+
+    function resetAddForm() {
+      selectedBook = null;
+      lastQuery = '';
+      document.getElementById('searchSection').classList.remove('hidden');
+      document.getElementById('manualSection').classList.add('hidden');
+      document.getElementById('selectedSection').classList.add('hidden');
+      document.getElementById('bookSearch').value = '';
+      document.getElementById('searchResults').innerHTML = '';
+      document.getElementById('addTitle').value = '';
+      document.getElementById('addAuthor').value = '';
+      document.getElementById('addRating').value = '5';
+      document.getElementById('addNotes').value = '';
+    }
+
+    function openAddModal() {
+      document.getElementById('addModal').showModal();
+      // small delay so dialog finishes opening before focus
+      setTimeout(() => document.getElementById('bookSearch').focus(), 50);
+    }
+
+    // ---- Cover backfill: one-shot per session, fills in covers for books that don't have one ----
+    async function backfillMissingCovers() {
+      if (!currentUser) return;
+      const candidates = books.filter(b => !b.cover && !b.coverAttempted);
+      for (const b of candidates) {
+        try {
+          const cover = await fetchCover(b.title, b.author);
+          const update = { coverAttempted: true };
+          if (cover) update.cover = cover;
+          await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), update);
+        } catch (e) {
+          console.warn('cover backfill failed for', b.title, e);
+        }
+        // be polite to the API between calls
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+
+    // ---- Form submission ----
     document.getElementById('addForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser) return;
+
+      // Resolve book data from either a search-selection or manual entry
+      let title, author, cover;
+      if (selectedBook) {
+        ({ title, author, cover } = selectedBook);
+      } else {
+        title  = document.getElementById('addTitle').value.trim();
+        author = document.getElementById('addAuthor').value.trim();
+        if (!title || !author) {
+          alert('Search for a book above, or fill in title and author manually.');
+          return;
+        }
+        cover = await fetchCover(title, author);
+      }
+
+      const rating = parseInt(document.getElementById('addRating').value, 10);
+      const notes  = document.getElementById('addNotes').value;
 
       const btn = document.getElementById('saveBookBtn');
       btn.textContent = 'Saving...';
       btn.disabled = true;
 
-      const title = document.getElementById('addTitle').value;
-      const author = document.getElementById('addAuthor').value;
-      const rating = parseInt(document.getElementById('addRating').value, 10);
-      const notes = document.getElementById('addNotes').value;
-
-      const cover = await fetchCover(title, author);
-      const colorIdx = Math.floor(Math.random() * spineColors.length);
-
-      await addDoc(collection(db, `users/${currentUser.uid}/books`), {
-        title, author, rating, notes, cover,
-        profile: activeProfile,
-        spine: spineColors[colorIdx],
-        ink: inkColors[colorIdx],
-        height: Math.floor(Math.random() * (190 - 140 + 1)) + 140, // Random height 140-190px
-        width: Math.floor(Math.random() * (46 - 30 + 1)) + 30,     // Random width 30-46px
-        createdAt: serverTimestamp()
-      });
-
-      document.getElementById('addModal').close();
-      e.target.reset();
-      btn.textContent = 'Save to shelf';
-      btn.disabled = false;
+      try {
+        const colorIdx = Math.floor(Math.random() * spineColors.length);
+        await addDoc(collection(db, `users/${currentUser.uid}/books`), {
+          title, author, rating, notes, cover: cover || null,
+          coverAttempted: true,
+          profile: activeProfile,
+          spine: spineColors[colorIdx],
+          ink: inkColors[colorIdx],
+          height: Math.floor(Math.random() * (190 - 140 + 1)) + 140, // 140-190px
+          width:  Math.floor(Math.random() * (46  - 30  + 1)) + 30,  // 30-46px
+          createdAt: serverTimestamp()
+        });
+        document.getElementById('addModal').close();
+      } catch (err) {
+        console.error('save failed', err);
+        alert('Save failed — try again.');
+      } finally {
+        btn.textContent = 'Save to shelf';
+        btn.disabled = false;
+      }
     });
+
+    // ---- Search/manual/selection wiring ----
+    document.getElementById('bookSearch').addEventListener('input', () => {
+      const term = document.getElementById('bookSearch').value.trim();
+      clearTimeout(searchTimer);
+      const resultsEl = document.getElementById('searchResults');
+      if (term.length < 3) { resultsEl.innerHTML = ''; return; }
+      searchTimer = setTimeout(() => {
+        if (term === lastQuery) return;
+        lastQuery = term;
+        runBookSearch(term);
+      }, 300);
+    });
+    document.getElementById('bookSearch').addEventListener('keydown', (e) => {
+      // don't submit the form on Enter while typing a search
+      if (e.key === 'Enter') e.preventDefault();
+    });
+    document.getElementById('manualEntryLink').addEventListener('click', () => {
+      document.getElementById('searchSection').classList.add('hidden');
+      document.getElementById('manualSection').classList.remove('hidden');
+      setTimeout(() => document.getElementById('addTitle').focus(), 50);
+    });
+    document.getElementById('changeSelection').addEventListener('click', () => {
+      selectedBook = null;
+      document.getElementById('selectedSection').classList.add('hidden');
+      document.getElementById('searchSection').classList.remove('hidden');
+      setTimeout(() => document.getElementById('bookSearch').focus(), 50);
+    });
+    // Reset on every close (cancel button, Escape key, or after save)
+    document.getElementById('addModal').addEventListener('close', resetAddForm);
 
     // Rendering Logic
     function escapeHtml(s) {
@@ -347,7 +555,7 @@
           slot.className = 'empty-slot';
           slot.setAttribute('aria-label', 'Add a finished book');
           slot.textContent = '+';
-          slot.addEventListener('click', () => document.getElementById('addModal').showModal());
+          slot.addEventListener('click', openAddModal);
           list.appendChild(slot);
         }
 
@@ -420,9 +628,7 @@
       dlg.showModal();
     }
 
-    document.getElementById('addBtn').addEventListener('click', () => {
-      document.getElementById('addModal').showModal();
-    });
+    document.getElementById('addBtn').addEventListener('click', openAddModal);
 
     // Profile chip — tap to swap between anthony and amy (per-device, persisted in localStorage).
     document.getElementById('profileBtn').addEventListener('click', () => {
