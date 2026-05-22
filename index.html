@@ -265,6 +265,9 @@
       measurementId: "G-XNE7ET849Z"
     };
 
+    // Google Books API key — client-side, restricted by referrer to anthonygeo3.github.io
+    const GOOGLE_BOOKS_KEY = "AIzaSyBSlndU-ynvDIPzoPxaB9EjbYbEJSzBjAc";
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -277,6 +280,7 @@
     let searchTimer = null;
     let lastQuery = '';
     let backfillTried = false; // one-shot cover backfill per session
+    const searchCache = new Map(); // term → filtered items array (in-session, prevents duplicate API hits)
 
     // Two named profiles on this device. Tap the chip to swap between them.
     // Choice is per-device — anonymous auth means no cross-device sync.
@@ -330,11 +334,12 @@
 
     signInAnonymously(auth).catch(console.error);
 
-    // Google Books API helper
+    // Google Books API helper — used for manual-entry covers + cover backfill
     async function fetchCover(title, author) {
       try {
         const q = encodeURIComponent(`intitle:${title}+inauthor:${author}`);
-        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1`);
+        const keyParam = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : '';
+        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1${keyParam}`);
         const data = await res.json();
         const thumb = data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
         return thumb ? thumb.replace('http:', 'https:') : null;
@@ -347,14 +352,22 @@
     // ---- Book search (Google Books) ----
     async function runBookSearch(term) {
       const resultsEl = document.getElementById('searchResults');
+
+      // In-session cache: never re-fetch the same query in one session
+      if (searchCache.has(term)) {
+        renderSearchResults(searchCache.get(term));
+        return;
+      }
+
       resultsEl.innerHTML = '<div class="search-status">searching…</div>';
-      // Dropped `printType=books` from the original — it's an optional filter and might be excluding hits.
-      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=6`;
+      const keyParam = GOOGLE_BOOKS_KEY ? `&key=${GOOGLE_BOOKS_KEY}` : '';
+      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(term)}&maxResults=6${keyParam}`;
+
       try {
         const res = await fetch(url);
         const bodyText = await res.text();
         let data = null;
-        try { data = JSON.parse(bodyText); } catch (_) { /* non-JSON response */ }
+        try { data = JSON.parse(bodyText); } catch (_) { /* non-JSON */ }
 
         if (!res.ok) {
           const msg = (data && data.error && data.error.message) || `HTTP ${res.status}`;
@@ -374,38 +387,42 @@
         }
 
         const items = (data.items || []).filter(i => i.volumeInfo && i.volumeInfo.title);
-        if (items.length === 0) {
-          console.warn('book search returned no items', { totalItems: data.totalItems, url, data });
-          resultsEl.innerHTML = `<div class="search-status">no matches (API said totalItems = ${data.totalItems ?? 0})</div>`;
-          return;
-        }
-
-        resultsEl.innerHTML = '';
-        items.forEach(item => {
-          const vi = item.volumeInfo;
-          const title = vi.title;
-          const author = (vi.authors && vi.authors.length) ? vi.authors.join(', ') : 'Unknown';
-          const rawCover = (vi.imageLinks && vi.imageLinks.thumbnail) || '';
-          const cover = rawCover ? rawCover.replace('http:', 'https:') : '';
-          const row = document.createElement('button');
-          row.type = 'button';
-          row.className = 'search-result';
-          row.innerHTML = `
-            ${cover
-              ? `<img src="${escapeHtml(cover)}" class="search-thumb" alt="" loading="lazy">`
-              : '<div class="search-thumb-fallback"></div>'}
-            <div class="search-meta">
-              <div class="search-title">${escapeHtml(title)}</div>
-              <div class="search-author">${escapeHtml(author)}</div>
-            </div>
-          `;
-          row.addEventListener('click', () => selectSearchResult(title, author, cover));
-          resultsEl.appendChild(row);
-        });
+        searchCache.set(term, items); // cache successful responses only
+        renderSearchResults(items);
       } catch (e) {
         console.warn('book search failed (fetch threw)', e, { url });
         resultsEl.innerHTML = `<div class="search-status">search failed: ${escapeHtml(String(e.message || e))}</div>`;
       }
+    }
+
+    function renderSearchResults(items) {
+      const resultsEl = document.getElementById('searchResults');
+      if (items.length === 0) {
+        resultsEl.innerHTML = '<div class="search-status">no matches — try a different search</div>';
+        return;
+      }
+      resultsEl.innerHTML = '';
+      items.forEach(item => {
+        const vi = item.volumeInfo;
+        const title = vi.title;
+        const author = (vi.authors && vi.authors.length) ? vi.authors.join(', ') : 'Unknown';
+        const rawCover = (vi.imageLinks && vi.imageLinks.thumbnail) || '';
+        const cover = rawCover ? rawCover.replace('http:', 'https:') : '';
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'search-result';
+        row.innerHTML = `
+          ${cover
+            ? `<img src="${escapeHtml(cover)}" class="search-thumb" alt="" loading="lazy">`
+            : '<div class="search-thumb-fallback"></div>'}
+          <div class="search-meta">
+            <div class="search-title">${escapeHtml(title)}</div>
+            <div class="search-author">${escapeHtml(author)}</div>
+          </div>
+        `;
+        row.addEventListener('click', () => selectSearchResult(title, author, cover));
+        resultsEl.appendChild(row);
+      });
     }
 
     function selectSearchResult(title, author, cover) {
@@ -511,12 +528,13 @@
       const term = document.getElementById('bookSearch').value.trim();
       clearTimeout(searchTimer);
       const resultsEl = document.getElementById('searchResults');
-      if (term.length < 3) { resultsEl.innerHTML = ''; return; }
+      // Min 4 chars + 500ms debounce keeps quota-spend modest while still feeling responsive.
+      if (term.length < 4) { resultsEl.innerHTML = ''; return; }
       searchTimer = setTimeout(() => {
         if (term === lastQuery) return;
         lastQuery = term;
         runBookSearch(term);
-      }, 300);
+      }, 500);
     });
     document.getElementById('bookSearch').addEventListener('keydown', (e) => {
       // don't submit the form on Enter while typing a search
