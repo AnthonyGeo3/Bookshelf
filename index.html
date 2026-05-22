@@ -172,6 +172,43 @@
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .search-status { padding: 10px; font-size: 13px; opacity: 0.6; text-align: center; }
+
+    /* ---------- chip groups (review tagging) ---------- */
+    .chip-group-label {
+      display: block; font-size: 13px; opacity: 0.7; margin-bottom: 6px;
+    }
+    .chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(59,36,24,.22);
+      background: transparent;
+      color: var(--ink);
+      font-size: 13px; font-family: inherit;
+      cursor: pointer;
+      transition: background .15s ease, border-color .15s ease, color .15s ease;
+    }
+    .chip:hover { background: rgba(59,36,24,.06); }
+    .chip.active {
+      background: var(--wood-mid);
+      color: var(--paper);
+      border-color: var(--wood-mid);
+    }
+
+    /* Read-only pills shown in the book detail modal */
+    .tag-pills {
+      display: flex; flex-wrap: wrap; gap: 5px;
+      margin: 6px 0 10px;
+    }
+    .tag-pill {
+      font-size: 11px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      background: rgba(59,36,24,.08);
+      border: 1px solid rgba(59,36,24,.15);
+      color: var(--ink);
+    }
+
     .selected-card {
       display: flex; gap: 12px; align-items: flex-start;
       padding: 10px; border-radius: 8px;
@@ -238,6 +275,61 @@
         <label class="block text-sm opacity-70 mb-1">Rating (1-5)</label>
         <input type="number" id="addRating" min="1" max="5" value="5" required class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
       </div>
+
+      <!-- Tagged review fields — feed the recommendation engine -->
+      <div>
+        <label class="chip-group-label">Genre <span class="opacity-50">(pick any)</span></label>
+        <div id="genreChips" class="chip-group">
+          <button type="button" class="chip" data-value="Literary fiction">Literary fiction</button>
+          <button type="button" class="chip" data-value="Sci-fi">Sci-fi</button>
+          <button type="button" class="chip" data-value="Fantasy">Fantasy</button>
+          <button type="button" class="chip" data-value="Mystery/Thriller">Mystery/Thriller</button>
+          <button type="button" class="chip" data-value="Horror">Horror</button>
+          <button type="button" class="chip" data-value="Romance">Romance</button>
+          <button type="button" class="chip" data-value="Classic">Classic</button>
+          <button type="button" class="chip" data-value="Historical fiction">Historical fiction</button>
+          <button type="button" class="chip" data-value="Non-fiction">Non-fiction</button>
+          <button type="button" class="chip" data-value="Biography/Memoir">Biography/Memoir</button>
+          <button type="button" class="chip" data-value="Pop science">Pop science</button>
+          <button type="button" class="chip" data-value="Philosophy">Philosophy</button>
+          <button type="button" class="chip" data-value="Poetry">Poetry</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="chip-group-label">Pace <span class="opacity-50">(pick one)</span></label>
+        <div id="paceChips" class="chip-group">
+          <button type="button" class="chip" data-value="Slow burn">Slow burn</button>
+          <button type="button" class="chip" data-value="Steady">Steady</button>
+          <button type="button" class="chip" data-value="Propulsive">Propulsive</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="chip-group-label">Tone <span class="opacity-50">(pick any)</span></label>
+        <div id="toneChips" class="chip-group">
+          <button type="button" class="chip" data-value="Dark">Dark</button>
+          <button type="button" class="chip" data-value="Hopeful">Hopeful</button>
+          <button type="button" class="chip" data-value="Witty">Witty</button>
+          <button type="button" class="chip" data-value="Bleak">Bleak</button>
+          <button type="button" class="chip" data-value="Earnest">Earnest</button>
+          <button type="button" class="chip" data-value="Playful">Playful</button>
+          <button type="button" class="chip" data-value="Contemplative">Contemplative</button>
+          <button type="button" class="chip" data-value="Romantic">Romantic</button>
+          <button type="button" class="chip" data-value="Tense">Tense</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="chip-group-label">Length felt <span class="opacity-50">(pick one)</span></label>
+        <div id="lengthChips" class="chip-group">
+          <button type="button" class="chip" data-value="Too short">Too short</button>
+          <button type="button" class="chip" data-value="Just right">Just right</button>
+          <button type="button" class="chip" data-value="A bit long">A bit long</button>
+          <button type="button" class="chip" data-value="Way too long">Way too long</button>
+        </div>
+      </div>
+
       <div>
         <textarea id="addNotes" placeholder="Thoughts / Notes" class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)] h-24"></textarea>
       </div>
@@ -449,12 +541,48 @@
       document.getElementById('addAuthor').value = '';
       document.getElementById('addRating').value = '5';
       document.getElementById('addNotes').value = '';
+      clearAllChips();
     }
 
     function openAddModal() {
       document.getElementById('addModal').showModal();
       // small delay so dialog finishes opening before focus
       setTimeout(() => document.getElementById('bookSearch').focus(), 50);
+    }
+
+    // ---- Chip group helpers (review tagging) ----
+    // Single-select groups: tapping one deactivates siblings. Multi: tapping just toggles.
+    const CHIP_GROUPS = [
+      { id: 'genreChips',  multi: true  },
+      { id: 'paceChips',   multi: false },
+      { id: 'toneChips',   multi: true  },
+      { id: 'lengthChips', multi: false },
+    ];
+    function setupChipGroup(id, multi) {
+      document.getElementById(id).addEventListener('click', (e) => {
+        const chip = e.target.closest('.chip');
+        if (!chip) return;
+        if (!multi) {
+          document.querySelectorAll(`#${id} .chip.active`).forEach(c => {
+            if (c !== chip) c.classList.remove('active');
+          });
+        }
+        chip.classList.toggle('active');
+      });
+    }
+    CHIP_GROUPS.forEach(g => setupChipGroup(g.id, g.multi));
+
+    function chipValues(id) {
+      return Array.from(document.querySelectorAll(`#${id} .chip.active`)).map(c => c.dataset.value);
+    }
+    function chipValue(id) {
+      const active = document.querySelector(`#${id} .chip.active`);
+      return active ? active.dataset.value : null;
+    }
+    function clearAllChips() {
+      CHIP_GROUPS.forEach(g => {
+        document.querySelectorAll(`#${g.id} .chip.active`).forEach(c => c.classList.remove('active'));
+      });
     }
 
     // ---- Cover backfill: one-shot per session, fills in covers for books that don't have one ----
@@ -497,6 +625,12 @@
       const rating = parseInt(document.getElementById('addRating').value, 10);
       const notes  = document.getElementById('addNotes').value;
 
+      // Tagged review data — drives the future recommendation engine
+      const genres     = chipValues('genreChips');
+      const pace       = chipValue('paceChips');
+      const tone       = chipValues('toneChips');
+      const lengthFelt = chipValue('lengthChips');
+
       const btn = document.getElementById('saveBookBtn');
       btn.textContent = 'Saving...';
       btn.disabled = true;
@@ -507,6 +641,7 @@
           title, author, rating, notes, cover: cover || null,
           coverAttempted: true,
           profile: activeProfile,
+          genres, pace, tone, lengthFelt,
           spine: spineColors[colorIdx],
           ink: inkColors[colorIdx],
           height: Math.floor(Math.random() * (190 - 140 + 1)) + 140, // 140-190px
@@ -642,11 +777,23 @@
         ? `<img src="${escapeHtml(b.cover)}" alt="cover of ${escapeHtml(b.title)}" class="modal-cover" />`
         : '';
       
+      // Collect any saved review tags (Genre, Pace, Tone, Length felt) for read-only display
+      const tags = [
+        ...(b.genres || []),
+        ...(b.pace ? [b.pace] : []),
+        ...(b.tone || []),
+        ...(b.lengthFelt ? [b.lengthFelt] : []),
+      ];
+      const tagsHtml = tags.length
+        ? `<div class="tag-pills">${tags.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('')}</div>`
+        : '';
+
       c.innerHTML = `
         ${cover}
         <h2 id="modalTitle" class="text-xl font-bold leading-tight">${escapeHtml(b.title)}</h2>
         <p class="opacity-70 text-sm mb-2">${escapeHtml(b.author)}</p>
-        <p class="stars text-lg mb-3" aria-label="rating ${b.rating} of 5">${stars(b.rating)}</p>
+        <p class="stars text-lg mb-1" aria-label="rating ${b.rating} of 5">${stars(b.rating)}</p>
+        ${tagsHtml}
         <p class="text-sm leading-relaxed">${b.notes ? escapeHtml(b.notes) : '<em class="opacity-60">no notes yet</em>'}</p>
         <div style="clear:both"></div>
         <div class="mt-6 pt-4 border-t border-[rgba(59,36,24,.1)] text-right">
