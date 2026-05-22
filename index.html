@@ -34,12 +34,10 @@
     /* ---------- bookcase ---------- */
     .shelf { position: relative; padding-bottom: 18px; }
     .shelf-row {
-      display: flex; align-items: flex-end; gap: 6px; padding: 6px 14px 0 14px;
-      overflow-x: auto; overflow-y: visible; scrollbar-width: thin;
-      scrollbar-color: rgba(59,36,24,.25) transparent; min-height: 200px;
+      display: flex; align-items: flex-end; gap: 6px;
+      padding: 6px 14px 0 14px;
+      min-height: 200px;
     }
-    .shelf-row::-webkit-scrollbar { height: 6px; }
-    .shelf-row::-webkit-scrollbar-thumb { background: rgba(59,36,24,.25); border-radius: 4px; }
     .shelf-plank {
       height: 16px;
       background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-mid) 55%, var(--wood-dark) 100%);
@@ -393,7 +391,6 @@
     document.body.dataset.profile = activeProfile;
     document.title = `${activeProfile[0].toUpperCase() + activeProfile.slice(1)}'s Bookshelf`;
 
-    const BOOKS_PER_SHELF = 8;
     const MIN_SHELVES = 3;
 
     // Palette for randomised spine generation
@@ -705,14 +702,53 @@
       return out;
     }
 
+    // How wide a book renders on the shelf — must match what makeBookEl actually sets.
+    function bookDisplayWidth(b) {
+      return b.cover
+        ? Math.round((b.height || 160) * 0.66)
+        : (b.width || 38);
+    }
+
+    // Sentinel for the "+" empty slot — packed alongside books so it always sits next to the last one.
+    const SLOT_ITEM = Object.freeze({ isSlot: true, width: 38 });
+
+    // Pack a list of items (books + slot) into shelf rows that fit the container width.
+    // Each output row will be its own shelf section (with its own plank).
+    function packIntoRows(items, containerWidth) {
+      const gap = 6;
+      const padding = 28; // .shelf-row left + right padding (14 + 14)
+      const available = Math.max(80, containerWidth - padding);
+      const rows = [];
+      let current = [];
+      let curWidth = 0;
+      for (const item of items) {
+        const w = item.isSlot ? item.width : bookDisplayWidth(item);
+        const widthWithGap = current.length > 0 ? gap + w : w;
+        if (curWidth + widthWithGap > available && current.length > 0) {
+          rows.push(current);
+          current = [];
+          curWidth = 0;
+        }
+        current.push(item);
+        curWidth += current.length === 1 ? w : (gap + w);
+      }
+      if (current.length > 0) rows.push(current);
+      return rows;
+    }
+
     function renderShelves() {
       const root = document.getElementById('shelves');
       root.innerHTML = '';
 
-      // Show only books belonging to the active profile.
+      // Only show books belonging to the active profile.
       // Books with no profile field (legacy from before the swap was added) default to 'anthony'.
       const visibleBooks = books.filter(b => (b.profile || 'anthony') === activeProfile);
-      const rows = chunk(visibleBooks, BOOKS_PER_SHELF);
+
+      // Pack books + the "+" slot into rows that fit. Each row becomes its own shelf.
+      const containerWidth = root.clientWidth || 460;
+      const rows = packIntoRows([...visibleBooks, SLOT_ITEM], containerWidth);
+
+      // Always show at least MIN_SHELVES rows so the bookcase doesn't look bare.
       while (rows.length < MIN_SHELVES) rows.push([]);
 
       rows.forEach((row, idx) => {
@@ -723,17 +759,19 @@
         const list = document.createElement('div');
         list.className = 'shelf-row';
 
-        row.forEach(b => list.appendChild(makeBookEl(b)));
-
-        if (idx === rows.length - 1 && row.length < BOOKS_PER_SHELF) {
-          const slot = document.createElement('button');
-          slot.type = 'button';
-          slot.className = 'empty-slot';
-          slot.setAttribute('aria-label', 'Add a finished book');
-          slot.textContent = '+';
-          slot.addEventListener('click', openAddModal);
-          list.appendChild(slot);
-        }
+        row.forEach(item => {
+          if (item.isSlot) {
+            const slot = document.createElement('button');
+            slot.type = 'button';
+            slot.className = 'empty-slot';
+            slot.setAttribute('aria-label', 'Add a finished book');
+            slot.textContent = '+';
+            slot.addEventListener('click', openAddModal);
+            list.appendChild(slot);
+          } else {
+            list.appendChild(makeBookEl(item));
+          }
+        });
 
         const plank = document.createElement('div');
         plank.className = 'shelf-plank';
@@ -823,6 +861,21 @@
       if (!currentUser) return; // ignore taps while still signing in
       setActiveProfile(activeProfile === 'anthony' ? 'amy' : 'anthony');
     });
+
+    // Re-pack shelves when the container width changes (window resize, phone rotation).
+    // Debounced so a drag-resize doesn't fire on every pixel.
+    let lastShelfWidth = 0;
+    let shelfResizeTimer = null;
+    const shelvesRoot = document.getElementById('shelves');
+    new ResizeObserver(entries => {
+      const w = entries[0].contentRect.width;
+      if (Math.abs(w - lastShelfWidth) < 4) return; // ignore sub-pixel jitter
+      clearTimeout(shelfResizeTimer);
+      shelfResizeTimer = setTimeout(() => {
+        lastShelfWidth = w;
+        renderShelves();
+      }, 150);
+    }).observe(shelvesRoot);
 
     // ---- service worker registration ----
     if ('serviceWorker' in navigator) {
