@@ -47,20 +47,42 @@
       border-radius: 2px 2px 5px 5px;
     }
 
-    /* ---------- book spine ---------- */
+    /* ---------- book (shared base) ---------- */
     .book {
-      flex: 0 0 auto; width: 38px; min-height: 150px; border-radius: 3px 3px 1px 1px;
-      writing-mode: vertical-rl; text-orientation: mixed; padding: 10px 4px;
-      font-family: ui-serif, Georgia, serif; font-size: 11px; font-weight: 600;
-      letter-spacing: 0.04em; cursor: pointer; color: inherit; border: none;
-      box-shadow: inset -3px 0 0 rgba(0,0,0,.22), inset 3px 0 0 rgba(255,255,255,.10), 2px 3px 4px rgba(0,0,0,.20);
+      flex: 0 0 auto; min-height: 150px; border-radius: 3px 3px 1px 1px;
+      cursor: pointer; color: inherit; border: none; overflow: hidden;
+      background-size: cover; background-position: center;
+      background-color: var(--paper-shade);
+      font-family: ui-serif, Georgia, serif;
       transition: transform .15s ease, box-shadow .15s ease; will-change: transform;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.1;
+      box-shadow: 2px 3px 4px rgba(0,0,0,.20);
     }
     .book:hover, .book:focus-visible {
-      transform: translateY(-8px);
-      box-shadow: inset -3px 0 0 rgba(0,0,0,.22), inset 3px 0 0 rgba(255,255,255,.10), 2px 8px 10px rgba(0,0,0,.25); outline: none;
+      transform: translateY(-8px); outline: none;
+      box-shadow: 2px 8px 10px rgba(0,0,0,.25);
     }
+
+    /* Spine-out — fallback for books without a cover: coloured spine + vertical title */
+    .book.book-spine {
+      writing-mode: vertical-rl; text-orientation: mixed;
+      padding: 10px 4px; line-height: 1.1;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+      text-overflow: ellipsis; white-space: nowrap;
+      box-shadow:
+        inset -3px 0 0 rgba(0,0,0,.22),
+        inset 3px 0 0 rgba(255,255,255,.10),
+        2px 3px 4px rgba(0,0,0,.20);
+    }
+    .book.book-spine:hover, .book.book-spine:focus-visible {
+      box-shadow:
+        inset -3px 0 0 rgba(0,0,0,.22),
+        inset 3px 0 0 rgba(255,255,255,.10),
+        2px 8px 10px rgba(0,0,0,.25);
+    }
+
+    /* Face-out — books with a cover: cover art shown as background. Width set inline (≈2/3 of height). */
+    .book.book-face { /* width comes from JS */ }
+
     .book:nth-child(4n) { transform: rotate(-1.2deg); }
     .book:nth-child(7n) { transform: rotate(1.4deg); }
     .book:nth-child(4n):hover, .book:nth-child(4n):focus-visible,
@@ -317,7 +339,7 @@
         const list = document.createElement('div');
         list.className = 'shelf-row';
 
-        row.forEach(b => list.appendChild(makeSpine(b)));
+        row.forEach(b => list.appendChild(makeBookEl(b)));
 
         if (idx === rows.length - 1 && row.length < BOOKS_PER_SHELF) {
           const slot = document.createElement('button');
@@ -338,17 +360,29 @@
       });
     }
 
-    function makeSpine(b) {
+    function makeBookEl(b) {
       const el = document.createElement('button');
       el.type = 'button';
       el.className = 'book';
-      el.style.background = `linear-gradient(90deg, ${b.spine} 0%, ${b.spine} 65%, rgba(0,0,0,0.18) 100%)`;
-      el.style.color = b.ink;
-      el.style.minHeight = b.height + 'px';
-      el.style.width = b.width + 'px';
+      el.style.minHeight = (b.height || 160) + 'px';
       el.setAttribute('aria-label', `${b.title} by ${b.author}, rated ${b.rating} of 5`);
-      el.textContent = b.title;
       el.addEventListener('click', () => openBook(b));
+
+      if (b.cover) {
+        // Face-out: show the cover art. Width ≈ 2/3 of height (standard book aspect).
+        el.classList.add('book-face');
+        el.style.width = Math.round((b.height || 160) * 0.66) + 'px';
+        // JSON.stringify safely quotes the URL for use in CSS url()
+        el.style.backgroundImage = `url(${JSON.stringify(b.cover)})`;
+        el.title = `${b.title} — ${b.author}`;
+      } else {
+        // Spine-out fallback: coloured spine with vertical title text.
+        el.classList.add('book-spine');
+        el.style.background = `linear-gradient(90deg, ${b.spine} 0%, ${b.spine} 65%, rgba(0,0,0,0.18) 100%)`;
+        el.style.color = b.ink;
+        el.style.width = (b.width || 38) + 'px';
+        el.textContent = b.title;
+      }
       return el;
     }
 
