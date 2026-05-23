@@ -424,15 +424,6 @@
         </div>
       </div>
 
-      <div class="review-only">
-        <label class="chip-group-label">Difficulty <span class="opacity-50">(pick one)</span></label>
-        <div id="difficultyChips" class="chip-group">
-          <button type="button" class="chip" data-value="Easy">Easy</button>
-          <button type="button" class="chip" data-value="Medium">Medium</button>
-          <button type="button" class="chip" data-value="Dense">Dense</button>
-        </div>
-      </div>
-
       <div>
         <textarea id="addNotes" placeholder="Thoughts / Notes" class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)] h-24"></textarea>
       </div>
@@ -528,57 +519,57 @@
     // ---- Curated classics list — the candidate pool for the Mystery recommendation ----
     // Tagged using exactly the chip vocabulary so the scorer can compare against the user's taste profile.
     const CLASSICS = [
-      { title: 'Beloved',                          author: 'Toni Morrison',           genres: ['Literary fiction','Classic'],                            tone: ['Dark','Contemplative','Bleak'],                pace: 'Slow burn',  chapterLength: 'Long',   difficulty: 'Dense'  },
-      { title: 'One Hundred Years of Solitude',    author: 'Gabriel García Márquez',  genres: ['Literary fiction','Classic'],                            tone: ['Contemplative','Playful'],                     pace: 'Slow burn',  chapterLength: 'Long',   difficulty: 'Dense'  },
-      { title: 'Pride and Prejudice',              author: 'Jane Austen',             genres: ['Classic','Romance'],                                     tone: ['Witty','Romantic','Playful'],                  pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Crime and Punishment',             author: 'Fyodor Dostoyevsky',      genres: ['Literary fiction','Classic'],                            tone: ['Dark','Tense','Contemplative'],                pace: 'Slow burn',  chapterLength: 'Long',   difficulty: 'Dense'  },
-      { title: 'Anna Karenina',                    author: 'Leo Tolstoy',             genres: ['Classic','Literary fiction','Romance'],                  tone: ['Contemplative','Romantic'],                    pace: 'Slow burn',  chapterLength: 'Long',   difficulty: 'Dense'  },
-      { title: 'Jane Eyre',                        author: 'Charlotte Brontë',        genres: ['Classic','Romance'],                                     tone: ['Earnest','Tense','Romantic'],                  pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Middlemarch',                      author: 'George Eliot',            genres: ['Classic','Literary fiction'],                            tone: ['Contemplative','Earnest'],                     pace: 'Slow burn',  chapterLength: 'Long',   difficulty: 'Dense'  },
-      { title: 'Great Expectations',               author: 'Charles Dickens',         genres: ['Classic','Literary fiction'],                            tone: ['Earnest','Contemplative'],                     pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'The Picture of Dorian Gray',       author: 'Oscar Wilde',             genres: ['Classic','Literary fiction','Horror'],                   tone: ['Dark','Witty'],                                pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Catch-22',                         author: 'Joseph Heller',           genres: ['Classic','Literary fiction'],                            tone: ['Dark','Witty','Playful'],                      pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Dense'  },
-      { title: 'Slaughterhouse-Five',              author: 'Kurt Vonnegut',           genres: ['Classic','Sci-fi','Literary fiction'],                   tone: ['Witty','Bleak','Playful'],                     pace: 'Steady',     chapterLength: 'Short',  difficulty: 'Easy'   },
-      { title: 'The Old Man and the Sea',          author: 'Ernest Hemingway',        genres: ['Classic','Literary fiction'],                            tone: ['Contemplative','Earnest'],                     pace: 'Slow burn',  chapterLength: 'Short',  difficulty: 'Easy'   },
-      { title: 'Of Mice and Men',                  author: 'John Steinbeck',          genres: ['Classic','Literary fiction'],                            tone: ['Bleak','Earnest'],                             pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Easy'   },
-      { title: 'Things Fall Apart',                author: 'Chinua Achebe',           genres: ['Classic','Literary fiction','Historical fiction'],       tone: ['Earnest','Bleak'],                             pace: 'Steady',     chapterLength: 'Short',  difficulty: 'Medium' },
-      { title: 'The Road',                         author: 'Cormac McCarthy',         genres: ['Literary fiction','Sci-fi'],                             tone: ['Bleak','Dark','Tense'],                        pace: 'Steady',     chapterLength: 'Short',  difficulty: 'Medium' },
-      { title: 'Never Let Me Go',                  author: 'Kazuo Ishiguro',          genres: ['Literary fiction','Sci-fi'],                             tone: ['Contemplative','Bleak'],                       pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'The Remains of the Day',           author: 'Kazuo Ishiguro',          genres: ['Literary fiction'],                                      tone: ['Contemplative','Bleak'],                       pace: 'Slow burn',  chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Norwegian Wood',                   author: 'Haruki Murakami',         genres: ['Literary fiction'],                                      tone: ['Contemplative','Bleak','Romantic'],            pace: 'Slow burn',  chapterLength: 'Medium', difficulty: 'Easy'   },
-      { title: 'Kafka on the Shore',               author: 'Haruki Murakami',         genres: ['Literary fiction'],                                      tone: ['Contemplative','Dark'],                        pace: 'Slow burn',  chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Lincoln in the Bardo',             author: 'George Saunders',         genres: ['Literary fiction','Historical fiction'],                 tone: ['Contemplative','Bleak','Playful'],             pace: 'Slow burn',  chapterLength: 'Short',  difficulty: 'Dense'  },
-      { title: '1984',                             author: 'George Orwell',           genres: ['Sci-fi','Classic','Literary fiction'],                   tone: ['Dark','Bleak','Tense'],                        pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Brave New World',                  author: 'Aldous Huxley',           genres: ['Sci-fi','Classic'],                                      tone: ['Dark','Bleak','Contemplative'],                pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Fahrenheit 451',                   author: 'Ray Bradbury',            genres: ['Sci-fi','Classic'],                                      tone: ['Dark','Tense','Bleak'],                        pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Easy'   },
-      { title: 'Foundation',                       author: 'Isaac Asimov',            genres: ['Sci-fi','Classic'],                                      tone: ['Contemplative'],                               pace: 'Steady',     chapterLength: 'Short',  difficulty: 'Medium' },
-      { title: 'Neuromancer',                      author: 'William Gibson',          genres: ['Sci-fi','Classic'],                                      tone: ['Dark','Tense'],                                pace: 'Propulsive', chapterLength: 'Medium', difficulty: 'Dense'  },
-      { title: 'The Left Hand of Darkness',        author: 'Ursula K. Le Guin',       genres: ['Sci-fi','Classic','Literary fiction'],                   tone: ['Contemplative'],                               pace: 'Slow burn',  chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Hyperion',                         author: 'Dan Simmons',             genres: ['Sci-fi'],                                                tone: ['Contemplative','Dark'],                        pace: 'Slow burn',  chapterLength: 'Long',   difficulty: 'Medium' },
-      { title: 'Snow Crash',                       author: 'Neal Stephenson',         genres: ['Sci-fi'],                                                tone: ['Witty','Playful'],                             pace: 'Propulsive', chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'The Lord of the Rings',            author: 'J.R.R. Tolkien',          genres: ['Fantasy','Classic'],                                     tone: ['Hopeful','Earnest','Contemplative'],           pace: 'Slow burn',  chapterLength: 'Long',   difficulty: 'Medium' },
-      { title: 'A Wizard of Earthsea',             author: 'Ursula K. Le Guin',       genres: ['Fantasy','Classic'],                                     tone: ['Contemplative','Earnest'],                     pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'The Name of the Wind',             author: 'Patrick Rothfuss',        genres: ['Fantasy'],                                               tone: ['Contemplative','Tense'],                       pace: 'Steady',     chapterLength: 'Short',  difficulty: 'Easy'   },
-      { title: 'American Gods',                    author: 'Neil Gaiman',             genres: ['Fantasy','Literary fiction'],                            tone: ['Dark','Contemplative','Witty'],                pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Mistborn: The Final Empire',       author: 'Brandon Sanderson',       genres: ['Fantasy'],                                               tone: ['Tense','Hopeful'],                             pace: 'Propulsive', chapterLength: 'Medium', difficulty: 'Easy'   },
-      { title: 'The Big Sleep',                    author: 'Raymond Chandler',        genres: ['Mystery/Thriller','Classic'],                            tone: ['Dark','Witty','Tense'],                        pace: 'Propulsive', chapterLength: 'Short',  difficulty: 'Easy'   },
-      { title: 'And Then There Were None',         author: 'Agatha Christie',         genres: ['Mystery/Thriller','Classic'],                            tone: ['Tense','Dark'],                                pace: 'Propulsive', chapterLength: 'Short',  difficulty: 'Easy'   },
-      { title: 'Tinker Tailor Soldier Spy',        author: 'John le Carré',           genres: ['Mystery/Thriller','Classic'],                            tone: ['Tense','Contemplative','Bleak'],               pace: 'Slow burn',  chapterLength: 'Medium', difficulty: 'Dense'  },
-      { title: 'The Silence of the Lambs',         author: 'Thomas Harris',           genres: ['Mystery/Thriller','Horror'],                             tone: ['Dark','Tense'],                                pace: 'Propulsive', chapterLength: 'Short',  difficulty: 'Easy'   },
-      { title: 'Gone Girl',                        author: 'Gillian Flynn',           genres: ['Mystery/Thriller'],                                      tone: ['Dark','Tense','Witty'],                        pace: 'Propulsive', chapterLength: 'Short',  difficulty: 'Easy'   },
-      { title: 'Frankenstein',                     author: 'Mary Shelley',            genres: ['Horror','Sci-fi','Classic'],                             tone: ['Dark','Contemplative','Bleak'],                pace: 'Slow burn',  chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Dracula',                          author: 'Bram Stoker',             genres: ['Horror','Classic'],                                      tone: ['Dark','Tense'],                                pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'The Haunting of Hill House',       author: 'Shirley Jackson',         genres: ['Horror','Classic'],                                      tone: ['Dark','Tense','Contemplative'],                pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'The Shining',                      author: 'Stephen King',            genres: ['Horror'],                                                tone: ['Dark','Tense'],                                pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Easy'   },
-      { title: 'Sapiens: A Brief History of Humankind', author: 'Yuval Noah Harari',  genres: ['Non-fiction','Pop science'],                             tone: ['Contemplative','Witty'],                       pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Easy'   },
-      { title: 'A Brief History of Time',          author: 'Stephen Hawking',         genres: ['Pop science','Non-fiction'],                             tone: ['Contemplative'],                               pace: 'Steady',     chapterLength: 'Short',  difficulty: 'Medium' },
-      { title: 'Thinking, Fast and Slow',          author: 'Daniel Kahneman',         genres: ['Non-fiction','Pop science'],                             tone: ['Contemplative'],                               pace: 'Slow burn',  chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Meditations',                      author: 'Marcus Aurelius',         genres: ['Philosophy','Classic','Non-fiction'],                    tone: ['Contemplative','Earnest'],                     pace: 'Slow burn',  chapterLength: 'Short',  difficulty: 'Dense'  },
-      { title: "Man's Search for Meaning",         author: 'Viktor E. Frankl',        genres: ['Non-fiction','Philosophy','Biography/Memoir','Classic'], tone: ['Earnest','Contemplative','Bleak','Hopeful'],   pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'The Body Keeps the Score',         author: 'Bessel van der Kolk',     genres: ['Non-fiction'],                                           tone: ['Contemplative','Earnest'],                     pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'The Vegetarian',                   author: 'Han Kang',                genres: ['Literary fiction'],                                      tone: ['Dark','Contemplative','Bleak'],                pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Medium' },
-      { title: 'Convenience Store Woman',          author: 'Sayaka Murata',           genres: ['Literary fiction'],                                      tone: ['Witty','Contemplative','Playful'],             pace: 'Steady',     chapterLength: 'Medium', difficulty: 'Easy'   },
-      { title: 'Klara and the Sun',                author: 'Kazuo Ishiguro',          genres: ['Literary fiction','Sci-fi'],                             tone: ['Contemplative','Earnest','Bleak'],             pace: 'Slow burn',  chapterLength: 'Medium', difficulty: 'Easy'   },
+      { title: 'Beloved',                          author: 'Toni Morrison',           genres: ['Literary fiction','Classic'],                            tone: ['Dark','Contemplative','Bleak'],                pace: 'Slow burn',  chapterLength: 'Long'   },
+      { title: 'One Hundred Years of Solitude',    author: 'Gabriel García Márquez',  genres: ['Literary fiction','Classic'],                            tone: ['Contemplative','Playful'],                     pace: 'Slow burn',  chapterLength: 'Long'   },
+      { title: 'Pride and Prejudice',              author: 'Jane Austen',             genres: ['Classic','Romance'],                                     tone: ['Witty','Romantic','Playful'],                  pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Crime and Punishment',             author: 'Fyodor Dostoyevsky',      genres: ['Literary fiction','Classic'],                            tone: ['Dark','Tense','Contemplative'],                pace: 'Slow burn',  chapterLength: 'Long'   },
+      { title: 'Anna Karenina',                    author: 'Leo Tolstoy',             genres: ['Classic','Literary fiction','Romance'],                  tone: ['Contemplative','Romantic'],                    pace: 'Slow burn',  chapterLength: 'Long'   },
+      { title: 'Jane Eyre',                        author: 'Charlotte Brontë',        genres: ['Classic','Romance'],                                     tone: ['Earnest','Tense','Romantic'],                  pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Middlemarch',                      author: 'George Eliot',            genres: ['Classic','Literary fiction'],                            tone: ['Contemplative','Earnest'],                     pace: 'Slow burn',  chapterLength: 'Long'   },
+      { title: 'Great Expectations',               author: 'Charles Dickens',         genres: ['Classic','Literary fiction'],                            tone: ['Earnest','Contemplative'],                     pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'The Picture of Dorian Gray',       author: 'Oscar Wilde',             genres: ['Classic','Literary fiction','Horror'],                   tone: ['Dark','Witty'],                                pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Catch-22',                         author: 'Joseph Heller',           genres: ['Classic','Literary fiction'],                            tone: ['Dark','Witty','Playful'],                      pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Slaughterhouse-Five',              author: 'Kurt Vonnegut',           genres: ['Classic','Sci-fi','Literary fiction'],                   tone: ['Witty','Bleak','Playful'],                     pace: 'Steady',     chapterLength: 'Short'  },
+      { title: 'The Old Man and the Sea',          author: 'Ernest Hemingway',        genres: ['Classic','Literary fiction'],                            tone: ['Contemplative','Earnest'],                     pace: 'Slow burn',  chapterLength: 'Short'  },
+      { title: 'Of Mice and Men',                  author: 'John Steinbeck',          genres: ['Classic','Literary fiction'],                            tone: ['Bleak','Earnest'],                             pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Things Fall Apart',                author: 'Chinua Achebe',           genres: ['Classic','Literary fiction','Historical fiction'],       tone: ['Earnest','Bleak'],                             pace: 'Steady',     chapterLength: 'Short'  },
+      { title: 'The Road',                         author: 'Cormac McCarthy',         genres: ['Literary fiction','Sci-fi'],                             tone: ['Bleak','Dark','Tense'],                        pace: 'Steady',     chapterLength: 'Short'  },
+      { title: 'Never Let Me Go',                  author: 'Kazuo Ishiguro',          genres: ['Literary fiction','Sci-fi'],                             tone: ['Contemplative','Bleak'],                       pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'The Remains of the Day',           author: 'Kazuo Ishiguro',          genres: ['Literary fiction'],                                      tone: ['Contemplative','Bleak'],                       pace: 'Slow burn',  chapterLength: 'Medium' },
+      { title: 'Norwegian Wood',                   author: 'Haruki Murakami',         genres: ['Literary fiction'],                                      tone: ['Contemplative','Bleak','Romantic'],            pace: 'Slow burn',  chapterLength: 'Medium' },
+      { title: 'Kafka on the Shore',               author: 'Haruki Murakami',         genres: ['Literary fiction'],                                      tone: ['Contemplative','Dark'],                        pace: 'Slow burn',  chapterLength: 'Medium' },
+      { title: 'Lincoln in the Bardo',             author: 'George Saunders',         genres: ['Literary fiction','Historical fiction'],                 tone: ['Contemplative','Bleak','Playful'],             pace: 'Slow burn',  chapterLength: 'Short'  },
+      { title: '1984',                             author: 'George Orwell',           genres: ['Sci-fi','Classic','Literary fiction'],                   tone: ['Dark','Bleak','Tense'],                        pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Brave New World',                  author: 'Aldous Huxley',           genres: ['Sci-fi','Classic'],                                      tone: ['Dark','Bleak','Contemplative'],                pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Fahrenheit 451',                   author: 'Ray Bradbury',            genres: ['Sci-fi','Classic'],                                      tone: ['Dark','Tense','Bleak'],                        pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Foundation',                       author: 'Isaac Asimov',            genres: ['Sci-fi','Classic'],                                      tone: ['Contemplative'],                               pace: 'Steady',     chapterLength: 'Short'  },
+      { title: 'Neuromancer',                      author: 'William Gibson',          genres: ['Sci-fi','Classic'],                                      tone: ['Dark','Tense'],                                pace: 'Propulsive', chapterLength: 'Medium' },
+      { title: 'The Left Hand of Darkness',        author: 'Ursula K. Le Guin',       genres: ['Sci-fi','Classic','Literary fiction'],                   tone: ['Contemplative'],                               pace: 'Slow burn',  chapterLength: 'Medium' },
+      { title: 'Hyperion',                         author: 'Dan Simmons',             genres: ['Sci-fi'],                                                tone: ['Contemplative','Dark'],                        pace: 'Slow burn',  chapterLength: 'Long'   },
+      { title: 'Snow Crash',                       author: 'Neal Stephenson',         genres: ['Sci-fi'],                                                tone: ['Witty','Playful'],                             pace: 'Propulsive', chapterLength: 'Medium' },
+      { title: 'The Lord of the Rings',            author: 'J.R.R. Tolkien',          genres: ['Fantasy','Classic'],                                     tone: ['Hopeful','Earnest','Contemplative'],           pace: 'Slow burn',  chapterLength: 'Long'   },
+      { title: 'A Wizard of Earthsea',             author: 'Ursula K. Le Guin',       genres: ['Fantasy','Classic'],                                     tone: ['Contemplative','Earnest'],                     pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'The Name of the Wind',             author: 'Patrick Rothfuss',        genres: ['Fantasy'],                                               tone: ['Contemplative','Tense'],                       pace: 'Steady',     chapterLength: 'Short'  },
+      { title: 'American Gods',                    author: 'Neil Gaiman',             genres: ['Fantasy','Literary fiction'],                            tone: ['Dark','Contemplative','Witty'],                pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Mistborn: The Final Empire',       author: 'Brandon Sanderson',       genres: ['Fantasy'],                                               tone: ['Tense','Hopeful'],                             pace: 'Propulsive', chapterLength: 'Medium' },
+      { title: 'The Big Sleep',                    author: 'Raymond Chandler',        genres: ['Mystery/Thriller','Classic'],                            tone: ['Dark','Witty','Tense'],                        pace: 'Propulsive', chapterLength: 'Short'  },
+      { title: 'And Then There Were None',         author: 'Agatha Christie',         genres: ['Mystery/Thriller','Classic'],                            tone: ['Tense','Dark'],                                pace: 'Propulsive', chapterLength: 'Short'  },
+      { title: 'Tinker Tailor Soldier Spy',        author: 'John le Carré',           genres: ['Mystery/Thriller','Classic'],                            tone: ['Tense','Contemplative','Bleak'],               pace: 'Slow burn',  chapterLength: 'Medium' },
+      { title: 'The Silence of the Lambs',         author: 'Thomas Harris',           genres: ['Mystery/Thriller','Horror'],                             tone: ['Dark','Tense'],                                pace: 'Propulsive', chapterLength: 'Short'  },
+      { title: 'Gone Girl',                        author: 'Gillian Flynn',           genres: ['Mystery/Thriller'],                                      tone: ['Dark','Tense','Witty'],                        pace: 'Propulsive', chapterLength: 'Short'  },
+      { title: 'Frankenstein',                     author: 'Mary Shelley',            genres: ['Horror','Sci-fi','Classic'],                             tone: ['Dark','Contemplative','Bleak'],                pace: 'Slow burn',  chapterLength: 'Medium' },
+      { title: 'Dracula',                          author: 'Bram Stoker',             genres: ['Horror','Classic'],                                      tone: ['Dark','Tense'],                                pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'The Haunting of Hill House',       author: 'Shirley Jackson',         genres: ['Horror','Classic'],                                      tone: ['Dark','Tense','Contemplative'],                pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'The Shining',                      author: 'Stephen King',            genres: ['Horror'],                                                tone: ['Dark','Tense'],                                pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Sapiens: A Brief History of Humankind', author: 'Yuval Noah Harari',  genres: ['Non-fiction','Pop science'],                             tone: ['Contemplative','Witty'],                       pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'A Brief History of Time',          author: 'Stephen Hawking',         genres: ['Pop science','Non-fiction'],                             tone: ['Contemplative'],                               pace: 'Steady',     chapterLength: 'Short'  },
+      { title: 'Thinking, Fast and Slow',          author: 'Daniel Kahneman',         genres: ['Non-fiction','Pop science'],                             tone: ['Contemplative'],                               pace: 'Slow burn',  chapterLength: 'Medium' },
+      { title: 'Meditations',                      author: 'Marcus Aurelius',         genres: ['Philosophy','Classic','Non-fiction'],                    tone: ['Contemplative','Earnest'],                     pace: 'Slow burn',  chapterLength: 'Short'  },
+      { title: "Man's Search for Meaning",         author: 'Viktor E. Frankl',        genres: ['Non-fiction','Philosophy','Biography/Memoir','Classic'], tone: ['Earnest','Contemplative','Bleak','Hopeful'],   pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'The Body Keeps the Score',         author: 'Bessel van der Kolk',     genres: ['Non-fiction'],                                           tone: ['Contemplative','Earnest'],                     pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'The Vegetarian',                   author: 'Han Kang',                genres: ['Literary fiction'],                                      tone: ['Dark','Contemplative','Bleak'],                pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Convenience Store Woman',          author: 'Sayaka Murata',           genres: ['Literary fiction'],                                      tone: ['Witty','Contemplative','Playful'],             pace: 'Steady',     chapterLength: 'Medium' },
+      { title: 'Klara and the Sun',                author: 'Kazuo Ishiguro',          genres: ['Literary fiction','Sci-fi'],                             tone: ['Contemplative','Earnest','Bleak'],             pace: 'Slow burn',  chapterLength: 'Medium' },
     ];
 
     // ---- Recommendation engine ----
@@ -907,8 +898,9 @@
       };
       (b.genres || []).forEach(g => activateChip('genreChips', g));
       (b.tone   || []).forEach(t => activateChip('toneChips',  t));
-      activateChip('paceChips',   b.pace);
-      activateChip('lengthChips', b.lengthFelt);
+      activateChip('paceChips',    b.pace);
+      activateChip('lengthChips',  b.lengthFelt);
+      activateChip('chapterChips', b.chapterLength);
 
       modal.showModal();
     }
@@ -916,12 +908,11 @@
     // ---- Chip group helpers (review tagging) ----
     // Single-select groups: tapping one deactivates siblings. Multi: tapping just toggles.
     const CHIP_GROUPS = [
-      { id: 'genreChips',      multi: true  },
-      { id: 'paceChips',       multi: false },
-      { id: 'toneChips',       multi: true  },
-      { id: 'lengthChips',     multi: false },
-      { id: 'chapterChips',    multi: false },
-      { id: 'difficultyChips', multi: false },
+      { id: 'genreChips',   multi: true  },
+      { id: 'paceChips',    multi: false },
+      { id: 'toneChips',    multi: true  },
+      { id: 'lengthChips',  multi: false },
+      { id: 'chapterChips', multi: false },
     ];
     function setupChipGroup(id, multi) {
       document.getElementById(id).addEventListener('click', (e) => {
@@ -1013,12 +1004,11 @@
         ? `<div class="tag-pills mt-2">${pick.genres.map(g => `<span class="tag-pill">${escapeHtml(g)}</span>`).join('')}</div>`
         : '';
 
-      // Compact meta line: "328 pages · slow burn · long chapters · dense difficulty"
+      // Compact meta line: "328 pages · slow burn · long chapters"
       const metaParts = [];
       if (pageCount)           metaParts.push(`${pageCount} pages`);
       if (pick.pace)           metaParts.push(pick.pace.toLowerCase());
       if (pick.chapterLength)  metaParts.push(`${pick.chapterLength.toLowerCase()} chapters`);
-      if (pick.difficulty)     metaParts.push(`${pick.difficulty.toLowerCase()} difficulty`);
       const metaHtml = metaParts.length
         ? `<p class="text-xs opacity-70 mt-2">${escapeHtml(metaParts.join(' · '))}</p>`
         : '';
@@ -1069,7 +1059,7 @@
           rating: null,
           notes: '',
           genres: [], tone: [], pace: null, lengthFelt: null,
-          chapterLength: null, difficulty: null,
+          chapterLength: null,
           spine: spineColors[colorIdx],
           ink: inkColors[colorIdx],
           height: Math.floor(Math.random() * (190 - 140 + 1)) + 140,
@@ -1133,7 +1123,6 @@
       const tone          = chipValues('toneChips');
       const lengthFelt    = chipValue('lengthChips');
       const chapterLength = chipValue('chapterChips');
-      const difficulty    = chipValue('difficultyChips');
 
       const btn = document.getElementById('saveBookBtn');
       btn.textContent = 'Saving...';
@@ -1150,7 +1139,7 @@
           // Editing existing — convert bedside → shelf, preserve original metadata, write review fields
           await updateDoc(doc(db, `users/${currentUser.uid}/books`, editingId), {
             rating, notes, status: 'finished',
-            genres, pace, tone, lengthFelt, chapterLength, difficulty,
+            genres, pace, tone, lengthFelt, chapterLength,
           });
         } else {
           const colorIdx = Math.floor(Math.random() * spineColors.length);
@@ -1159,7 +1148,7 @@
             coverAttempted: true,
             profile: activeProfile,
             status,
-            genres, pace, tone, lengthFelt, chapterLength, difficulty,
+            genres, pace, tone, lengthFelt, chapterLength,
             spine: spineColors[colorIdx],
             ink: inkColors[colorIdx],
             height: Math.floor(Math.random() * (190 - 140 + 1)) + 140, // 140-190px
@@ -1365,7 +1354,6 @@
         ...(b.tone || []),
         ...(b.lengthFelt ? [b.lengthFelt] : []),
         ...(b.chapterLength ? [`${b.chapterLength} chapters`] : []),
-        ...(b.difficulty ? [`${b.difficulty} difficulty`] : []),
       ];
       const tagsHtml = tags.length
         ? `<div class="tag-pills">${tags.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('')}</div>`
