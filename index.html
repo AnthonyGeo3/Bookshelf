@@ -278,6 +278,38 @@
 
     /* Hide rating + tag groups in the add modal when adding to the bedside (you haven't read it yet) */
     #addModal[data-mode="bedside"] .review-only { display: none; }
+
+    /* ---------- shelf controls (sort + author filter) ---------- */
+    .shelf-controls {
+      display: flex; gap: 16px;
+      padding: 6px 16px 0;
+      font-size: 13px;
+      flex-wrap: wrap;
+    }
+    .shelf-controls label {
+      display: inline-flex; align-items: center; gap: 5px;
+      cursor: pointer;
+    }
+    .shelf-controls label span { opacity: 0.6; letter-spacing: 0.02em; }
+    .shelf-controls select {
+      background: transparent;
+      border: none;
+      border-bottom: 1px dashed rgba(59,36,24,.30);
+      padding: 2px 18px 2px 4px;
+      font-family: inherit; font-size: inherit;
+      color: var(--ink);
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 6'><polyline points='0,0 6,6 12,0' fill='none' stroke='%233b2418' stroke-width='1.5' opacity='0.5'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 2px center;
+      background-size: 10px;
+      max-width: 180px;
+    }
+    .shelf-controls select:focus { outline: none; border-bottom-color: var(--wood-mid); }
+    /* Bedside keeps natural order — sort/filter is shelf-only for now */
+    body[data-view="bedside"] .shelf-controls { display: none; }
   </style>
 </head>
 <body>
@@ -293,6 +325,23 @@
     <button class="view-tab" data-view="bookshelf" type="button" role="tab" aria-selected="true">Shelf</button>
     <button class="view-tab" data-view="bedside" type="button" role="tab" aria-selected="false">Bedside</button>
   </nav>
+
+  <div class="shelf-controls max-w-3xl mx-auto">
+    <label>
+      <span>sort by</span>
+      <select id="sortSelect" aria-label="Sort by">
+        <option value="completed">most recent</option>
+        <option value="author">author</option>
+        <option value="length">length</option>
+      </select>
+    </label>
+    <label>
+      <span>author</span>
+      <select id="authorFilter" aria-label="Filter by author">
+        <option value="">all</option>
+      </select>
+    </label>
+  </div>
 
   <main id="shelves" class="max-w-3xl mx-auto px-2 pt-4 pb-32 space-y-7"></main>
 
@@ -510,6 +559,20 @@
     // Paint initial state before auth/data resolve so the tabs+wall match localStorage
     document.body.dataset.view = activeView;
 
+    // ---- Sort + filter state (Shelf only) ----
+    let activeSort   = localStorage.getItem('bookshelf:sort')   || 'completed';
+    let activeFilter = localStorage.getItem('bookshelf:filter') || '';
+    function setActiveSort(value) {
+      activeSort = value;
+      localStorage.setItem('bookshelf:sort', value);
+      renderShelves();
+    }
+    function setActiveFilter(value) {
+      activeFilter = value;
+      localStorage.setItem('bookshelf:filter', value);
+      renderShelves();
+    }
+
     const MIN_SHELVES = 3;
 
     // Palette for randomised spine generation
@@ -671,10 +734,10 @@
         onSnapshot(q, (snapshot) => {
           books = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           renderShelves();
-          // One-shot: retry cover fetch for any books that don't have one yet.
+          // One-shot per session: fill in any missing Google Books details (cover/pageCount/year).
           if (!backfillTried && books.length > 0) {
             backfillTried = true;
-            backfillMissingCovers();
+            backfillMissingDetails();
           }
         });
       } else {
@@ -802,6 +865,8 @@
         const author = (vi.authors && vi.authors.length) ? vi.authors.join(', ') : 'Unknown';
         const rawCover = (vi.imageLinks && vi.imageLinks.thumbnail) || '';
         const cover = rawCover ? rawCover.replace('http:', 'https:') : '';
+        const pageCount = vi.pageCount || null;
+        const publishedDate = vi.publishedDate || null;
         const row = document.createElement('button');
         row.type = 'button';
         row.className = 'search-result';
@@ -814,13 +879,18 @@
             <div class="search-author">${escapeHtml(author)}</div>
           </div>
         `;
-        row.addEventListener('click', () => selectSearchResult(title, author, cover));
+        row.addEventListener('click', () => selectSearchResult(title, author, cover, pageCount, publishedDate));
         resultsEl.appendChild(row);
       });
     }
 
-    function selectSearchResult(title, author, cover) {
-      selectedBook = { title, author, cover: cover || null };
+    function selectSearchResult(title, author, cover, pageCount, publishedDate) {
+      selectedBook = {
+        title, author,
+        cover: cover || null,
+        pageCount: pageCount || null,
+        publishedDate: publishedDate || null,
+      };
       document.getElementById('searchSection').classList.add('hidden');
       document.getElementById('manualSection').classList.add('hidden');
       document.getElementById('selectedSection').classList.remove('hidden');
@@ -1048,12 +1118,16 @@
       btn.textContent = 'Adding…';
       btn.disabled = true;
       try {
+        // Reach back into the details cache (populated by pickAndRenderMystery) for pageCount + year
+        const cachedDetails = bookDetailsCache.get(`${book.title.toLowerCase()}|${book.author.toLowerCase()}`) || null;
         const colorIdx = Math.floor(Math.random() * spineColors.length);
         await addDoc(collection(db, `users/${currentUser.uid}/books`), {
           title: book.title,
           author: book.author,
           cover: cover || null,
-          coverAttempted: true,
+          pageCount: cachedDetails?.pageCount || null,
+          publishedDate: cachedDetails?.publishedDate || null,
+          detailsAttempted: true,
           profile: activeProfile,
           status: 'bedside',
           rating: null,
@@ -1065,6 +1139,7 @@
           height: Math.floor(Math.random() * (190 - 140 + 1)) + 140,
           width:  Math.floor(Math.random() * (46  - 30  + 1)) + 30,
           createdAt: serverTimestamp(),
+          completedAt: null,
           fromRecommendation: true,
         });
         document.getElementById('mysteryModal').close();
@@ -1077,18 +1152,24 @@
       }
     });
 
-    // ---- Cover backfill: one-shot per session, fills in covers for books that don't have one ----
-    async function backfillMissingCovers() {
+    // ---- Detail backfill: one-shot per session, fills in cover + pageCount + publishedDate for books that don't have them.
+    // Filter is `!b.detailsAttempted` so it catches:
+    //   - books that have never been attempted (any new field missing)
+    //   - older books that have coverAttempted=true but were added before pageCount support
+    // After backfill, detailsAttempted=true means we've taken our shot — never re-fetched, even if fields are null.
+    async function backfillMissingDetails() {
       if (!currentUser) return;
-      const candidates = books.filter(b => !b.cover && !b.coverAttempted);
+      const candidates = books.filter(b => !b.detailsAttempted);
       for (const b of candidates) {
         try {
-          const cover = await fetchCover(b.title, b.author);
-          const update = { coverAttempted: true };
-          if (cover) update.cover = cover;
+          const details = await fetchBookDetails(b.title, b.author);
+          const update = { detailsAttempted: true };
+          if (details?.cover && !b.cover)             update.cover = details.cover;
+          if (details?.pageCount && !b.pageCount)     update.pageCount = details.pageCount;
+          if (details?.publishedDate && !b.publishedDate) update.publishedDate = details.publishedDate;
           await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), update);
         } catch (e) {
-          console.warn('cover backfill failed for', b.title, e);
+          console.warn('details backfill failed for', b.title, e);
         }
         // be polite to the API between calls
         await new Promise(r => setTimeout(r, 300));
@@ -1101,9 +1182,9 @@
       if (!currentUser) return;
 
       // Resolve book data from either a search-selection or manual entry
-      let title, author, cover;
+      let title, author, cover, pageCount, publishedDate;
       if (selectedBook) {
-        ({ title, author, cover } = selectedBook);
+        ({ title, author, cover, pageCount, publishedDate } = selectedBook);
       } else {
         title  = document.getElementById('addTitle').value.trim();
         author = document.getElementById('addAuthor').value.trim();
@@ -1111,7 +1192,11 @@
           alert('Search for a book above, or fill in title and author manually.');
           return;
         }
-        cover = await fetchCover(title, author);
+        // Manual entry: pull cover + page count + year in one call
+        const details = await fetchBookDetails(title, author);
+        cover         = details?.cover         || null;
+        pageCount     = details?.pageCount     || null;
+        publishedDate = details?.publishedDate || null;
       }
 
       const rating = parseInt(document.getElementById('addRating').value, 10);
@@ -1136,16 +1221,22 @@
 
       try {
         if (editingId) {
-          // Editing existing — convert bedside → shelf, preserve original metadata, write review fields
-          await updateDoc(doc(db, `users/${currentUser.uid}/books`, editingId), {
+          // Editing existing — review fields only. If converting bedside → shelf, stamp completedAt.
+          const editingBook = books.find(b => b.id === editingId);
+          const wasBedside = editingBook && (editingBook.status || 'finished') === 'bedside';
+          const update = {
             rating, notes, status: 'finished',
             genres, pace, tone, lengthFelt, chapterLength,
-          });
+          };
+          if (wasBedside) update.completedAt = serverTimestamp();
+          await updateDoc(doc(db, `users/${currentUser.uid}/books`, editingId), update);
         } else {
           const colorIdx = Math.floor(Math.random() * spineColors.length);
           await addDoc(collection(db, `users/${currentUser.uid}/books`), {
-            title, author, rating, notes, cover: cover || null,
-            coverAttempted: true,
+            title, author, rating, notes,
+            cover: cover || null,
+            pageCount, publishedDate,
+            detailsAttempted: true,
             profile: activeProfile,
             status,
             genres, pace, tone, lengthFelt, chapterLength,
@@ -1153,7 +1244,8 @@
             ink: inkColors[colorIdx],
             height: Math.floor(Math.random() * (190 - 140 + 1)) + 140, // 140-190px
             width:  Math.floor(Math.random() * (46  - 30  + 1)) + 30,  // 30-46px
-            createdAt: serverTimestamp()
+            createdAt: serverTimestamp(),
+            completedAt: status === 'finished' ? serverTimestamp() : null,
           });
         }
         document.getElementById('addModal').close();
@@ -1213,6 +1305,60 @@
       return out;
     }
 
+    // ---- Sort + author-filter helpers (Shelf only) ----
+    // Firestore Timestamps expose toMillis() — fall back to .seconds if not available, or 0.
+    function tsMillis(ts) {
+      if (!ts) return 0;
+      if (typeof ts.toMillis === 'function') return ts.toMillis();
+      if (typeof ts.seconds === 'number') return ts.seconds * 1000;
+      return 0;
+    }
+    function sortBooks(arr, sortKey) {
+      const out = [...arr];
+      if (sortKey === 'author') {
+        out.sort((a, b) => (a.author || '').localeCompare(b.author || '', undefined, { sensitivity: 'base' }));
+      } else if (sortKey === 'length') {
+        out.sort((a, b) => {
+          const ap = a.pageCount || null;
+          const bp = b.pageCount || null;
+          if (ap == null && bp == null) return 0;
+          if (ap == null) return 1;   // unknown lengths go to the end
+          if (bp == null) return -1;
+          return ap - bp;             // shortest first
+        });
+      } else {
+        // 'completed' (default) — most recently finished first.
+        // completedAt is stamped when status becomes 'finished'; fall back to createdAt for older books.
+        out.sort((a, b) => tsMillis(b.completedAt || b.createdAt) - tsMillis(a.completedAt || a.createdAt));
+      }
+      return out;
+    }
+
+    // Rebuild the author dropdown to reflect the books currently on the active profile's shelf.
+    // Preserves the current selection if still valid; clears the filter silently if not.
+    function populateAuthorFilter() {
+      const select = document.getElementById('authorFilter');
+      const shelfBooks = books.filter(b =>
+        (b.profile || 'anthony') === activeProfile &&
+        (b.status  || 'finished') === 'finished'
+      );
+      const authors = [...new Set(shelfBooks.map(b => b.author).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+      const options = ['<option value="">all</option>']
+        .concat(authors.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`));
+      select.innerHTML = options.join('');
+      if (activeFilter && authors.includes(activeFilter)) {
+        select.value = activeFilter;
+      } else {
+        select.value = '';
+        if (activeFilter) {
+          // Saved filter no longer applies (book deleted, profile swap, etc.) — clear it.
+          activeFilter = '';
+          localStorage.setItem('bookshelf:filter', '');
+        }
+      }
+    }
+
     // How wide a book renders on the shelf — must match what makeBookEl actually sets.
     function bookDisplayWidth(b) {
       return b.cover
@@ -1256,10 +1402,17 @@
       // Filter by active profile AND active view.
       // Legacy: books without a profile default to 'anthony'; books without a status default to 'finished' (on the Shelf).
       const expectedStatus = activeView === 'bedside' ? 'bedside' : 'finished';
-      const visibleBooks = books.filter(b =>
+      let visibleBooks = books.filter(b =>
         (b.profile || 'anthony') === activeProfile &&
         (b.status  || 'finished') === expectedStatus
       );
+
+      // Shelf-only: refresh the author dropdown, then apply the saved filter + sort.
+      if (activeView === 'bookshelf') {
+        populateAuthorFilter();
+        if (activeFilter) visibleBooks = visibleBooks.filter(b => b.author === activeFilter);
+        visibleBooks = sortBooks(visibleBooks, activeSort);
+      }
 
       // On the Bedside, prepend the mystery "?" tile. Always append the "+" empty slot.
       const items = activeView === 'bedside'
@@ -1441,6 +1594,11 @@
     });
     // Initial activation: marks the right tab .active and writes the right subtitle.
     setActiveView(activeView);
+
+    // Sort + filter selects — sync to saved values, then wire change handlers.
+    document.getElementById('sortSelect').value = activeSort;
+    document.getElementById('sortSelect').addEventListener('change', e => setActiveSort(e.target.value));
+    document.getElementById('authorFilter').addEventListener('change', e => setActiveFilter(e.target.value));
 
     // Re-pack shelves when the container width changes (window resize, phone rotation).
     // Debounced so a drag-resize doesn't fire on every pixel.
