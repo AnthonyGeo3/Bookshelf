@@ -308,8 +308,6 @@
       max-width: 180px;
     }
     .shelf-controls select:focus { outline: none; border-bottom-color: var(--wood-mid); }
-    /* Bedside keeps natural order — sort/filter is shelf-only for now */
-    body[data-view="bedside"] .shelf-controls { display: none; }
   </style>
 </head>
 <body>
@@ -332,6 +330,7 @@
       <select id="sortSelect" aria-label="Sort by">
         <option value="completed">most recent</option>
         <option value="author">author</option>
+        <option value="genre">genre</option>
         <option value="length">length</option>
       </select>
     </label>
@@ -765,8 +764,9 @@
       }
     }
 
-    // Richer Google Books fetch — pulls cover + description + page count + year in one call.
-    // Used by the mystery recommendation card. In-session cached so re-rolls don't re-fetch known titles.
+    // Richer Google Books fetch — pulls cover + description + page count + year + categories in one call.
+    // Used by the mystery recommendation card and the auto-tagging flow.
+    // In-session cached so re-rolls don't re-fetch known titles.
     const bookDetailsCache = new Map();
     async function fetchBookDetails(title, author) {
       const cacheKey = `${title.toLowerCase()}|${author.toLowerCase()}`;
@@ -783,6 +783,7 @@
           description:   vi.description   || null,
           pageCount:     vi.pageCount     || null,
           publishedDate: vi.publishedDate || null,
+          categories:    vi.categories    || [],
         };
         bookDetailsCache.set(cacheKey, result);
         return result;
@@ -790,6 +791,36 @@
         console.warn('Failed to fetch book details', e);
         return null;
       }
+    }
+
+    // Translate Google's noisy category strings (e.g. "Fiction / Science Fiction / Apocalyptic")
+    // into the chip vocabulary we use everywhere else. Best-effort; user can override via chips.
+    function mapGoogleCategoriesToChips(categories) {
+      if (!categories || !categories.length) return [];
+      const text = categories.join(' / ').toLowerCase();
+      const out = new Set();
+      if (text.includes('science fiction'))             out.add('Sci-fi');
+      if (text.includes('fantasy'))                     out.add('Fantasy');
+      if (text.includes('romance'))                     out.add('Romance');
+      if (/thriller|mystery|suspense|crime/.test(text)) out.add('Mystery/Thriller');
+      if (text.includes('horror'))                      out.add('Horror');
+      if (text.includes('historical'))                  out.add('Historical fiction');
+      if (text.includes('literary'))                    out.add('Literary fiction');
+      if (text.includes('classics'))                    out.add('Classic');
+      if (/biography|autobiography|memoir/.test(text))  out.add('Biography/Memoir');
+      if (text.includes('philosophy'))                  out.add('Philosophy');
+      if (text.includes('poetry'))                      out.add('Poetry');
+      // Pop science: only if "science" appears without "science fiction"
+      if (text.includes('science') && !text.includes('science fiction')) out.add('Pop science');
+      // Fallbacks for under-tagged categories
+      if (out.size === 0) {
+        if (text.includes('fiction')) {
+          out.add('Literary fiction');
+        } else if (/history|essays|self-?help|business|cooking|travel|religion|spirituality|health|reference|education|computer|technology|true crime|drama|play/.test(text)) {
+          out.add('Non-fiction');
+        }
+      }
+      return Array.from(out);
     }
 
     // Strip Google's embedded HTML tags from descriptions and break at the nearest sentence
@@ -867,6 +898,7 @@
         const cover = rawCover ? rawCover.replace('http:', 'https:') : '';
         const pageCount = vi.pageCount || null;
         const publishedDate = vi.publishedDate || null;
+        const categories = vi.categories || [];
         const row = document.createElement('button');
         row.type = 'button';
         row.className = 'search-result';
@@ -879,17 +911,18 @@
             <div class="search-author">${escapeHtml(author)}</div>
           </div>
         `;
-        row.addEventListener('click', () => selectSearchResult(title, author, cover, pageCount, publishedDate));
+        row.addEventListener('click', () => selectSearchResult(title, author, cover, pageCount, publishedDate, categories));
         resultsEl.appendChild(row);
       });
     }
 
-    function selectSearchResult(title, author, cover, pageCount, publishedDate) {
+    function selectSearchResult(title, author, cover, pageCount, publishedDate, categories) {
       selectedBook = {
         title, author,
         cover: cover || null,
         pageCount: pageCount || null,
         publishedDate: publishedDate || null,
+        categories: categories || [],
       };
       document.getElementById('searchSection').classList.add('hidden');
       document.getElementById('manualSection').classList.add('hidden');
@@ -899,6 +932,14 @@
       else { coverEl.removeAttribute('src'); coverEl.style.display = 'none'; }
       document.getElementById('selectedTitle').textContent = title;
       document.getElementById('selectedAuthor').textContent = author;
+
+      // Auto-pre-select genre chips from Google's categories. User can adjust before saving.
+      // Only touches the genre group — other chips are left untouched.
+      document.querySelectorAll('#genreChips .chip.active').forEach(c => c.classList.remove('active'));
+      mapGoogleCategoriesToChips(categories || []).forEach(g => {
+        const chip = document.querySelector(`#genreChips .chip[data-value="${CSS.escape(g)}"]`);
+        if (chip) chip.classList.add('active');
+      });
     }
 
     function resetAddForm() {
@@ -1164,9 +1205,14 @@
         try {
           const details = await fetchBookDetails(b.title, b.author);
           const update = { detailsAttempted: true };
-          if (details?.cover && !b.cover)             update.cover = details.cover;
-          if (details?.pageCount && !b.pageCount)     update.pageCount = details.pageCount;
+          if (details?.cover && !b.cover)                 update.cover = details.cover;
+          if (details?.pageCount && !b.pageCount)         update.pageCount = details.pageCount;
           if (details?.publishedDate && !b.publishedDate) update.publishedDate = details.publishedDate;
+          // Auto-tag missing genres from Google's categories so sort-by-genre works retroactively.
+          if (details?.categories && details.categories.length && (!b.genres || b.genres.length === 0)) {
+            const mapped = mapGoogleCategoriesToChips(details.categories);
+            if (mapped.length) update.genres = mapped;
+          }
           await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), update);
         } catch (e) {
           console.warn('details backfill failed for', b.title, e);
@@ -1182,9 +1228,9 @@
       if (!currentUser) return;
 
       // Resolve book data from either a search-selection or manual entry
-      let title, author, cover, pageCount, publishedDate;
+      let title, author, cover, pageCount, publishedDate, googleCategories;
       if (selectedBook) {
-        ({ title, author, cover, pageCount, publishedDate } = selectedBook);
+        ({ title, author, cover, pageCount, publishedDate, categories: googleCategories } = selectedBook);
       } else {
         title  = document.getElementById('addTitle').value.trim();
         author = document.getElementById('addAuthor').value.trim();
@@ -1192,22 +1238,29 @@
           alert('Search for a book above, or fill in title and author manually.');
           return;
         }
-        // Manual entry: pull cover + page count + year in one call
+        // Manual entry: pull cover + page count + year + categories in one call
         const details = await fetchBookDetails(title, author);
-        cover         = details?.cover         || null;
-        pageCount     = details?.pageCount     || null;
-        publishedDate = details?.publishedDate || null;
+        cover            = details?.cover         || null;
+        pageCount        = details?.pageCount     || null;
+        publishedDate    = details?.publishedDate || null;
+        googleCategories = details?.categories    || [];
       }
 
       const rating = parseInt(document.getElementById('addRating').value, 10);
       const notes  = document.getElementById('addNotes').value;
 
       // Tagged review data — drives the future recommendation engine
-      const genres        = chipValues('genreChips');
+      let   genres        = chipValues('genreChips');
       const pace          = chipValue('paceChips');
       const tone          = chipValues('toneChips');
       const lengthFelt    = chipValue('lengthChips');
       const chapterLength = chipValue('chapterChips');
+
+      // Manual-entry fallback: if user didn't pick any genre chips, derive from Google's categories.
+      // (Search-flow users see the pre-filled chips and can adjust — so we trust whatever they show.)
+      if (!document.getElementById('addModal').dataset.editing && genres.length === 0 && googleCategories && googleCategories.length) {
+        genres = mapGoogleCategoriesToChips(googleCategories);
+      }
 
       const btn = document.getElementById('saveBookBtn');
       btn.textContent = 'Saving...';
@@ -1282,6 +1335,10 @@
     });
     document.getElementById('changeSelection').addEventListener('click', () => {
       selectedBook = null;
+      // Reset chips + rating + notes since they were pre-populated for the previous book
+      clearAllChips();
+      setRating(5);
+      document.getElementById('addNotes').value = '';
       document.getElementById('selectedSection').classList.add('hidden');
       document.getElementById('searchSection').classList.remove('hidden');
       setTimeout(() => document.getElementById('bookSearch').focus(), 50);
@@ -1317,6 +1374,16 @@
       const out = [...arr];
       if (sortKey === 'author') {
         out.sort((a, b) => (a.author || '').localeCompare(b.author || '', undefined, { sensitivity: 'base' }));
+      } else if (sortKey === 'genre') {
+        // Sort by primary genre (first tag) alphabetically. No-genre books go to the end.
+        out.sort((a, b) => {
+          const ag = (a.genres && a.genres[0]) || '';
+          const bg = (b.genres && b.genres[0]) || '';
+          if (!ag && !bg) return 0;
+          if (!ag) return 1;
+          if (!bg) return -1;
+          return ag.localeCompare(bg, undefined, { sensitivity: 'base' });
+        });
       } else if (sortKey === 'length') {
         out.sort((a, b) => {
           const ap = a.pageCount || null;
@@ -1338,11 +1405,13 @@
     // Preserves the current selection if still valid; clears the filter silently if not.
     function populateAuthorFilter() {
       const select = document.getElementById('authorFilter');
-      const shelfBooks = books.filter(b =>
+      // Use whichever view we're currently on — bedside dropdown shows bedside authors, etc.
+      const expectedStatus = activeView === 'bedside' ? 'bedside' : 'finished';
+      const viewBooks = books.filter(b =>
         (b.profile || 'anthony') === activeProfile &&
-        (b.status  || 'finished') === 'finished'
+        (b.status  || 'finished') === expectedStatus
       );
-      const authors = [...new Set(shelfBooks.map(b => b.author).filter(Boolean))]
+      const authors = [...new Set(viewBooks.map(b => b.author).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
       const options = ['<option value="">all</option>']
         .concat(authors.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`));
@@ -1352,7 +1421,7 @@
       } else {
         select.value = '';
         if (activeFilter) {
-          // Saved filter no longer applies (book deleted, profile swap, etc.) — clear it.
+          // Saved filter doesn't apply in the current view — clear it silently.
           activeFilter = '';
           localStorage.setItem('bookshelf:filter', '');
         }
@@ -1407,12 +1476,10 @@
         (b.status  || 'finished') === expectedStatus
       );
 
-      // Shelf-only: refresh the author dropdown, then apply the saved filter + sort.
-      if (activeView === 'bookshelf') {
-        populateAuthorFilter();
-        if (activeFilter) visibleBooks = visibleBooks.filter(b => b.author === activeFilter);
-        visibleBooks = sortBooks(visibleBooks, activeSort);
-      }
+      // Apply sort + filter to whichever view we're on (controls visible for both now).
+      populateAuthorFilter();
+      if (activeFilter) visibleBooks = visibleBooks.filter(b => b.author === activeFilter);
+      visibleBooks = sortBooks(visibleBooks, activeSort);
 
       // On the Bedside, prepend the mystery "?" tile. Always append the "+" empty slot.
       const items = activeView === 'bedside'
