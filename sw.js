@@ -6,11 +6,12 @@
  * IMPORTANT: bump CACHE_NAME (e.g. 'bookshelf-v1' -> 'bookshelf-v2') any time you change
  * an asset that's listed in CORE_ASSETS. Otherwise browsers will serve the stale version.
  */
-const CACHE_NAME = 'bookshelf-v18';
+const CACHE_NAME = 'bookshelf-v19';
 
 const CORE_ASSETS = [
   './',
   './index.html',
+  './classics.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'
