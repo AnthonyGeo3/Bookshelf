@@ -276,8 +276,96 @@
     }
     body[data-view="bedside"] .view-tab.active { background: rgba(89,48,75,.16); }
 
-    /* Hide rating + tag groups in the add modal when adding to the bedside (you haven't read it yet) */
-    #addModal[data-mode="bedside"] .review-only { display: none; }
+    /* Hide rating + tag groups in the add modal when the book isn't finished yet
+       (adding to bedside, or starting to read — no review until it's done) */
+    #addModal[data-mode="bedside"] .review-only,
+    #addModal[data-mode="reading"] .review-only { display: none; }
+
+    /* ---------- currently-reading strip (top of the Shelf) ---------- */
+    .reading-strip {
+      max-width: 48rem;
+      margin: 0 auto 4px;
+      padding: 10px 16px 14px;
+    }
+    .reading-strip h2 {
+      font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;
+      opacity: 0.55; margin: 0 0 8px; font-weight: 600;
+    }
+    .reading-row {
+      display: flex; gap: 12px; overflow-x: auto;
+      padding-bottom: 4px; -webkit-overflow-scrolling: touch;
+    }
+    .reading-card {
+      flex: 0 0 auto; display: flex; gap: 10px; align-items: stretch;
+      width: 230px; max-width: 78vw;
+      padding: 8px; border-radius: 10px;
+      background: rgba(255,255,255,.45);
+      border: 1px solid rgba(59,36,24,.14);
+      box-shadow: 0 4px 10px rgba(0,0,0,.10);
+      cursor: pointer; text-align: left; color: var(--ink); font-family: inherit;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .reading-card:hover, .reading-card:focus-visible {
+      transform: translateY(-3px); outline: none;
+      box-shadow: 0 8px 16px rgba(0,0,0,.16);
+    }
+    .reading-card-cover {
+      width: 46px; height: 69px; flex-shrink: 0; border-radius: 3px;
+      object-fit: cover; background: var(--paper-shade);
+      box-shadow: 0 2px 5px rgba(0,0,0,.22);
+    }
+    .reading-card-cover-fallback {
+      width: 46px; height: 69px; flex-shrink: 0; border-radius: 3px;
+      box-shadow: 0 2px 5px rgba(0,0,0,.22);
+    }
+    .reading-card-meta { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+    .reading-card-title {
+      font-weight: 700; font-size: 13px; line-height: 1.2;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .reading-card-author {
+      font-size: 11px; opacity: 0.65; margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .reading-card-since { font-size: 10px; opacity: 0.5; margin-top: auto; font-style: italic; }
+    body[data-view="bedside"] .reading-strip { display: none; }
+
+    /* ---------- header icon button (stats) ---------- */
+    .icon-btn {
+      background: rgba(59,36,24,.08); border: 1px solid rgba(59,36,24,.15);
+      border-radius: 999px; width: 34px; height: 34px;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--ink); padding: 0;
+      transition: background .15s ease;
+    }
+    .icon-btn:hover { background: rgba(59,36,24,.14); }
+    .icon-btn svg { width: 18px; height: 18px; }
+
+    /* ---------- stats modal ---------- */
+    #statsModal { width: min(94vw, 520px); }
+    .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 4px 0 18px; }
+    .stat-card {
+      background: rgba(59,36,24,.05); border: 1px solid rgba(59,36,24,.12);
+      border-radius: 10px; padding: 12px 14px;
+    }
+    .stat-num { font-size: 26px; font-weight: 700; line-height: 1; }
+    .stat-label { font-size: 11px; opacity: 0.6; margin-top: 5px; letter-spacing: 0.03em; }
+    .stat-section-label {
+      font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase;
+      opacity: 0.55; font-weight: 600; margin: 16px 0 8px;
+    }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+    .bar-label { width: 92px; flex-shrink: 0; opacity: 0.75; text-align: right;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-track { flex: 1; background: rgba(59,36,24,.08); border-radius: 999px; height: 14px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--wood-mid); border-radius: 999px; min-width: 2px; }
+    .bar-value { width: 34px; flex-shrink: 0; opacity: 0.6; font-variant-numeric: tabular-nums; }
+    .month-chart { display: flex; align-items: flex-end; gap: 4px; height: 90px; margin-top: 4px; }
+    .month-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+    .month-bar { width: 100%; background: var(--wood-mid); border-radius: 3px 3px 0 0; min-height: 2px; }
+    .month-bar-label { font-size: 9px; opacity: 0.5; }
+    .stats-empty { opacity: 0.6; font-size: 14px; text-align: center; padding: 24px 0; }
 
     /* ---------- shelf controls (sort + author filter) ---------- */
     .shelf-controls {
@@ -316,7 +404,16 @@
       <h1 class="text-3xl font-bold tracking-tight">Bookshelf</h1>
       <p id="subtitle" class="text-sm opacity-70 italic">finished books look better on a shelf</p>
     </div>
-    <button id="profileBtn" class="profile-chip" type="button">signing in...</button>
+    <div class="flex items-center gap-2">
+      <button id="statsBtn" class="icon-btn" type="button" aria-label="Reading stats" title="Reading stats">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="6" y1="20" x2="6" y2="13"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="18" y1="20" x2="18" y2="9"></line>
+        </svg>
+      </button>
+      <button id="profileBtn" class="profile-chip" type="button">signing in...</button>
+    </div>
   </header>
 
   <nav class="view-switcher max-w-3xl mx-auto" role="tablist" aria-label="Section">
@@ -341,6 +438,8 @@
       </select>
     </label>
   </div>
+
+  <section id="readingStrip" class="reading-strip hidden" aria-label="Currently reading"></section>
 
   <main id="shelves" class="max-w-3xl mx-auto px-2 pt-4 pb-32 space-y-7"></main>
 
@@ -482,6 +581,23 @@
     </form>
   </dialog>
 
+  <dialog id="statsModal" aria-labelledby="statsTitleLabel">
+    <form method="dialog" class="modal-inner">
+      <h2 id="statsTitleLabel" class="text-xl font-bold leading-tight mb-3">Your reading</h2>
+      <div id="statsContent"></div>
+      <div class="mt-5 pt-4 border-t border-[rgba(59,36,24,.1)]">
+        <p class="text-xs opacity-60 mb-2">Backup &amp; restore — your shelf lives only on this device until you export it.</p>
+        <div class="flex gap-2">
+          <button type="button" id="exportBtn" class="btn-wood flex-1 bg-opacity-20 bg-black text-[var(--ink)]">Export backup</button>
+          <button type="button" id="importBtn" class="btn-wood flex-1 bg-opacity-20 bg-black text-[var(--ink)]">Import backup</button>
+        </div>
+      </div>
+      <button class="btn-wood mt-4" type="submit" value="close">close</button>
+    </form>
+  </dialog>
+
+  <input type="file" id="importFile" accept="application/json,.json" class="hidden" />
+
   <footer class="text-center text-xs opacity-60 py-4">made with love · v1</footer>
 
   <!-- Classics recommendation pool lives in its own file — extends window.CLASSICS, used by the module below -->
@@ -490,7 +606,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAHMaWQRXsAglvgPxsAfR0tmTNzSo67-Y4",
@@ -585,6 +701,17 @@
     // file's edit context smaller. Mutating CLASSICS at runtime would be bad, but we just read it.
     const CLASSICS = window.CLASSICS || [];
 
+    // Fast lookup into the curated pool by "title|author" (case-insensitive). Used to auto-fill
+    // tone/pace/chapter-length chips when the user adds a book we already have rich tags for —
+    // they can still override anything before saving.
+    const POOL_BY_KEY = new Map(
+      CLASSICS.map(c => [`${c.title.toLowerCase()}|${c.author.toLowerCase()}`, c])
+    );
+    function findInPool(title, author) {
+      if (!title || !author) return null;
+      return POOL_BY_KEY.get(`${title.toLowerCase()}|${author.toLowerCase()}`) || null;
+    }
+
     // ---- Recommendation engine ----
     // Build a normalised taste profile from the user's finished, tagged books.
     // Higher-rated books carry more weight.
@@ -621,11 +748,11 @@
     // 25% of the time, pick a stretch — a low-scoring candidate, deliberately outside taste.
     function shouldStretch() { return Math.random() < 0.25; }
 
-    function pickRecommendation(classics, finishedBooks, bedsideBooks, isStretch) {
-      const excluded = new Set([
-        ...finishedBooks.map(b => `${(b.title || '').toLowerCase()}|${(b.author || '').toLowerCase()}`),
-        ...bedsideBooks .map(b => `${(b.title || '').toLowerCase()}|${(b.author || '').toLowerCase()}`),
-      ]);
+    function pickRecommendation(classics, finishedBooks, ownedBooks, isStretch) {
+      // Exclude anything already in the user's world — finished, bedside, or currently reading.
+      const excluded = new Set(
+        ownedBooks.map(b => `${(b.title || '').toLowerCase()}|${(b.author || '').toLowerCase()}`)
+      );
       const candidates = classics.filter(c =>
         !excluded.has(`${c.title.toLowerCase()}|${c.author.toLowerCase()}`)
       );
@@ -891,6 +1018,28 @@
         const chip = document.querySelector(`#genreChips .chip[data-value="${CSS.escape(g)}"]`);
         if (chip) chip.classList.add('active');
       });
+
+      // If this exact title is in our curated pool, we have hand-tagged tone/pace/chapter-length —
+      // pre-fill all of it (overriding the rough Google genre guess). User can still override.
+      prefillChipsFromPool(findInPool(title, author));
+    }
+
+    // Activate genre/tone/pace/chapter chips from a curated pool entry. No-op if entry is null.
+    // Clears the relevant groups first so we don't merge with a previous selection.
+    function prefillChipsFromPool(entry) {
+      if (!entry) return;
+      const activate = (groupId, value) => {
+        if (!value) return;
+        const chip = document.querySelector(`#${groupId} .chip[data-value="${CSS.escape(value)}"]`);
+        if (chip) chip.classList.add('active');
+      };
+      ['genreChips', 'toneChips', 'paceChips', 'chapterChips'].forEach(id => {
+        document.querySelectorAll(`#${id} .chip.active`).forEach(c => c.classList.remove('active'));
+      });
+      (entry.genres || []).forEach(g => activate('genreChips', g));
+      (entry.tone   || []).forEach(t => activate('toneChips',  t));
+      activate('paceChips',    entry.pace);
+      activate('chapterChips', entry.chapterLength);
     }
 
     function resetAddForm() {
@@ -911,13 +1060,23 @@
       clearAllChips();
     }
 
-    function openAddModal() {
-      const isBedside = activeView === 'bedside';
+    // mode: 'shelf' (finished) | 'bedside' (planned) | 'reading' (started, not finished).
+    // Called both directly and as a click handler, so ignore a non-string (Event) argument
+    // and fall back to the active view.
+    function openAddModal(modeArg) {
+      const mode = (typeof modeArg === 'string')
+        ? modeArg
+        : (activeView === 'bedside' ? 'bedside' : 'shelf');
+      const LABELS = {
+        shelf:   { title: 'Add a finished book',  save: 'Save to shelf'   },
+        bedside: { title: 'Add to your bedside',   save: 'Save to bedside' },
+        reading: { title: 'Start a book',          save: 'Start reading'   },
+      };
       const modal = document.getElementById('addModal');
-      modal.dataset.mode = isBedside ? 'bedside' : 'shelf';
+      modal.dataset.mode = mode;
       modal.removeAttribute('data-editing'); // not in edit mode for the normal add flow
-      document.getElementById('addTitleLabel').textContent = isBedside ? 'Add to your bedside' : 'Add a finished book';
-      document.getElementById('saveBookBtn').textContent   = isBedside ? 'Save to bedside'   : 'Save to shelf';
+      document.getElementById('addTitleLabel').textContent = LABELS[mode].title;
+      document.getElementById('saveBookBtn').textContent   = LABELS[mode].save;
       modal.showModal();
       // small delay so dialog finishes opening before focus
       setTimeout(() => document.getElementById('bookSearch').focus(), 50);
@@ -928,11 +1087,11 @@
     //   - editing an already-finished book's review (title: "Edit review")
     // Pre-fills everything the book already has so the user only changes what they want.
     function openAddModalForEdit(b) {
-      const isBedside = (b.status || 'finished') === 'bedside';
+      const isUnfinished = (b.status || 'finished') !== 'finished';
       const modal = document.getElementById('addModal');
       modal.dataset.mode = 'shelf';        // always shelf — we're saving review fields either way
       modal.dataset.editing = b.id;        // form submit will updateDoc instead of addDoc
-      document.getElementById('addTitleLabel').textContent = isBedside ? 'How was it?' : 'Edit review';
+      document.getElementById('addTitleLabel').textContent = isUnfinished ? 'How was it?' : 'Edit review';
       document.getElementById('saveBookBtn').textContent   = 'Save to shelf';
 
       // Lock the book selection — search hidden, "change" hidden, the selected card shows the book
@@ -1032,17 +1191,11 @@
 
     async function pickAndRenderMystery() {
       // Profile is built from FINISHED books in the active profile only.
-      const finishedBooks = books.filter(b =>
-        (b.profile || 'anthony') === activeProfile &&
-        (b.status  || 'finished') === 'finished'
-      );
-      const bedsideBooks = books.filter(b =>
-        (b.profile || 'anthony') === activeProfile &&
-        (b.status  || 'finished') === 'bedside'
-      );
+      const profileBooks = books.filter(b => (b.profile || 'anthony') === activeProfile);
+      const finishedBooks = profileBooks.filter(b => (b.status || 'finished') === 'finished');
 
       const isStretch = shouldStretch();
-      const pick = pickRecommendation(CLASSICS, finishedBooks, bedsideBooks, isStretch);
+      const pick = pickRecommendation(CLASSICS, finishedBooks, profileBooks, isStretch);
 
       const contentEl = document.getElementById('mysteryContent');
       if (!pick) {
@@ -1197,20 +1350,29 @@
         googleCategories = details?.categories    || [];
       }
 
-      const rating = parseInt(document.getElementById('addRating').value, 10);
-      const notes  = document.getElementById('addNotes').value;
+      const isEditing = !!document.getElementById('addModal').dataset.editing;
 
-      // Tagged review data — drives the future recommendation engine
-      let   genres        = chipValues('genreChips');
-      const pace          = chipValue('paceChips');
-      const tone          = chipValues('toneChips');
-      const lengthFelt    = chipValue('lengthChips');
-      const chapterLength = chipValue('chapterChips');
+      // Tagged review data — drives the recommendation engine
+      let genres        = chipValues('genreChips');
+      let pace          = chipValue('paceChips');
+      let tone          = chipValues('toneChips');
+      let lengthFelt    = chipValue('lengthChips');
+      let chapterLength = chipValue('chapterChips');
 
-      // Manual-entry fallback: if user didn't pick any genre chips, derive from Google's categories.
-      // (Search-flow users see the pre-filled chips and can adjust — so we trust whatever they show.)
-      if (!document.getElementById('addModal').dataset.editing && genres.length === 0 && googleCategories && googleCategories.length) {
-        genres = mapGoogleCategoriesToChips(googleCategories);
+      // Auto-tag fallbacks for fresh adds where the user left chips untouched (manual entry, mostly —
+      // search-flow users already saw pre-filled chips). Curated pool wins; Google categories are the
+      // backstop for genre. Either way the user can edit later.
+      if (!isEditing) {
+        const poolEntry = findInPool(title, author);
+        if (poolEntry) {
+          if (genres.length === 0)        genres        = poolEntry.genres || [];
+          if (tone.length === 0)          tone          = poolEntry.tone   || [];
+          if (!pace)                      pace          = poolEntry.pace   || null;
+          if (!chapterLength)             chapterLength = poolEntry.chapterLength || null;
+        }
+        if (genres.length === 0 && googleCategories && googleCategories.length) {
+          genres = mapGoogleCategoriesToChips(googleCategories);
+        }
       }
 
       const btn = document.getElementById('saveBookBtn');
@@ -1221,18 +1383,26 @@
       const modal = document.getElementById('addModal');
       const modeAtOpen = modal.dataset.mode || 'shelf';
       const editingId = modal.dataset.editing || null;
-      const status = modeAtOpen === 'bedside' ? 'bedside' : 'finished';
+      const status = modeAtOpen === 'bedside' ? 'bedside'
+                   : modeAtOpen === 'reading' ? 'reading'
+                   : 'finished';
+      const isFinished = status === 'finished';
+
+      // Review fields only make sense for finished books. Bedside/reading get nulled out so we
+      // don't store a phantom 5-star rating on a book that hasn't been read.
+      const rating = isFinished ? parseInt(document.getElementById('addRating').value, 10) : null;
+      const notes  = document.getElementById('addNotes').value;
 
       try {
         if (editingId) {
-          // Editing existing — review fields only. If converting bedside → shelf, stamp completedAt.
+          // Editing existing — review fields only. Converting bedside/reading → shelf stamps completedAt.
           const editingBook = books.find(b => b.id === editingId);
-          const wasBedside = editingBook && (editingBook.status || 'finished') === 'bedside';
+          const wasUnfinished = editingBook && (editingBook.status || 'finished') !== 'finished';
           const update = {
             rating, notes, status: 'finished',
             genres, pace, tone, lengthFelt, chapterLength,
           };
-          if (wasBedside) update.completedAt = serverTimestamp();
+          if (wasUnfinished) update.completedAt = serverTimestamp();
           await updateDoc(doc(db, `users/${currentUser.uid}/books`, editingId), update);
         } else {
           const colorIdx = Math.floor(Math.random() * spineColors.length);
@@ -1249,7 +1419,8 @@
             height: Math.floor(Math.random() * (190 - 140 + 1)) + 140, // 140-190px
             width:  Math.floor(Math.random() * (46  - 30  + 1)) + 30,  // 30-46px
             createdAt: serverTimestamp(),
-            completedAt: status === 'finished' ? serverTimestamp() : null,
+            startedAt:   status === 'reading'  ? serverTimestamp() : null,
+            completedAt: isFinished ? serverTimestamp() : null,
           });
         }
         document.getElementById('addModal').close();
@@ -1257,7 +1428,9 @@
         console.error('save failed', err);
         alert('Save failed — try again.');
       } finally {
-        btn.textContent = status === 'bedside' ? 'Save to bedside' : 'Save to shelf';
+        btn.textContent = status === 'bedside' ? 'Save to bedside'
+                        : status === 'reading' ? 'Start reading'
+                        : 'Save to shelf';
         btn.disabled = false;
       }
     });
@@ -1354,6 +1527,7 @@
 
     // Rebuild the author dropdown to reflect the books currently on the active profile's shelf.
     // Preserves the current selection if still valid; clears the filter silently if not.
+    let lastAuthorSig = null; // skip rebuilding the dropdown on pure resize re-renders
     function populateAuthorFilter() {
       const select = document.getElementById('authorFilter');
       // Use whichever view we're currently on — bedside dropdown shows bedside authors, etc.
@@ -1364,9 +1538,14 @@
       );
       const authors = [...new Set(viewBooks.map(b => b.author).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-      const options = ['<option value="">all</option>']
-        .concat(authors.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`));
-      select.innerHTML = options.join('');
+      // Only touch the DOM when the option set actually changed (view/profile/authors).
+      const sig = `${activeView}|${activeProfile}|${authors.join('')}`;
+      if (sig !== lastAuthorSig) {
+        lastAuthorSig = sig;
+        const options = ['<option value="">all</option>']
+          .concat(authors.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`));
+        select.innerHTML = options.join('');
+      }
       if (activeFilter && authors.includes(activeFilter)) {
         select.value = activeFilter;
       } else {
@@ -1383,7 +1562,7 @@
     function bookDisplayWidth(b) {
       return b.cover
         ? Math.round((b.height || 160) * 0.66)
-        : (b.width || 38);
+        : Math.max(b.width || 38, 36); // floor keeps vertical spine titles legible
     }
 
     // Sentinel for the "+" empty slot — packed alongside books so it always sits next to the last one.
@@ -1415,7 +1594,71 @@
       return rows;
     }
 
+    // ---- Currently-reading strip (shown above the Shelf only) ----
+    function relativeSince(ts) {
+      const ms = tsMillis(ts);
+      if (!ms) return '';
+      const days = Math.floor((Date.now() - ms) / 86400000);
+      if (days <= 0) return 'started today';
+      if (days === 1) return 'started yesterday';
+      if (days < 7)  return `reading for ${days} days`;
+      const weeks = Math.floor(days / 7);
+      return weeks === 1 ? 'reading for a week' : `reading for ${weeks} weeks`;
+    }
+
+    function renderReadingStrip() {
+      const strip = document.getElementById('readingStrip');
+      const readingBooks = books
+        .filter(b => (b.profile || 'anthony') === activeProfile && b.status === 'reading')
+        .sort((a, b) => tsMillis(b.startedAt) - tsMillis(a.startedAt));
+
+      // Only ever visible on the Shelf. On the Bedside it's hidden via CSS, but we also skip
+      // building it there to avoid needless DOM churn.
+      if (activeView !== 'bookshelf') { strip.classList.add('hidden'); strip.innerHTML = ''; return; }
+      strip.classList.remove('hidden');
+
+      const row = document.createElement('div');
+      row.className = 'reading-row';
+
+      readingBooks.forEach(b => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'reading-card';
+        card.setAttribute('aria-label', `Currently reading ${b.title} by ${b.author}`);
+        const coverHtml = b.cover
+          ? `<img src="${escapeHtml(b.cover)}" class="reading-card-cover" alt="">`
+          : `<span class="reading-card-cover-fallback" style="background:${escapeHtml(b.spine || '#4a3b6b')}"></span>`;
+        card.innerHTML = `
+          ${coverHtml}
+          <span class="reading-card-meta">
+            <span class="reading-card-title">${escapeHtml(b.title)}</span>
+            <span class="reading-card-author">${escapeHtml(b.author)}</span>
+            <span class="reading-card-since">${escapeHtml(relativeSince(b.startedAt))}</span>
+          </span>`;
+        card.addEventListener('click', () => openBook(b));
+        row.appendChild(card);
+      });
+
+      // Trailing "start a book" affordance
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'reading-card';
+      add.style.alignItems = 'center';
+      add.style.justifyContent = 'center';
+      add.style.width = '130px';
+      add.style.opacity = '0.75';
+      add.setAttribute('aria-label', 'Start reading a book');
+      add.innerHTML = `<span style="font-size:13px">+ start a book</span>`;
+      add.addEventListener('click', () => openAddModal('reading'));
+      row.appendChild(add);
+
+      const heading = readingBooks.length ? 'Currently reading' : 'Start reading';
+      strip.innerHTML = `<h2>${heading}</h2>`;
+      strip.appendChild(row);
+    }
+
     function renderShelves() {
+      renderReadingStrip();
       const root = document.getElementById('shelves');
       root.innerHTML = '';
 
@@ -1488,7 +1731,10 @@
       el.type = 'button';
       el.className = 'book';
       el.style.minHeight = (b.height || 160) + 'px';
-      el.setAttribute('aria-label', `${b.title} by ${b.author}, rated ${b.rating} of 5`);
+      // Rating only exists for finished books — don't announce "rated null of 5" for bedside titles.
+      el.setAttribute('aria-label', b.rating
+        ? `${b.title} by ${b.author}, rated ${b.rating} of 5`
+        : `${b.title} by ${b.author}`);
       el.addEventListener('click', () => openBook(b));
 
       if (b.cover) {
@@ -1503,10 +1749,26 @@
         el.classList.add('book-spine');
         el.style.background = `linear-gradient(90deg, ${b.spine} 0%, ${b.spine} 65%, rgba(0,0,0,0.18) 100%)`;
         el.style.color = b.ink;
-        el.style.width = (b.width || 38) + 'px';
+        el.style.width = Math.max(b.width || 38, 36) + 'px';
         el.textContent = b.title;
       }
       return el;
+    }
+
+    // ---- Status transitions ----
+    async function startReading(b) {
+      if (!currentUser) return;
+      await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), {
+        status: 'reading',
+        startedAt: serverTimestamp(),
+      });
+    }
+    async function moveToBedside(b) {
+      if (!currentUser) return;
+      await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), {
+        status: 'bedside',
+        startedAt: null,
+      });
     }
 
     function openBook(b) {
@@ -1515,11 +1777,14 @@
       const cover = b.cover
         ? `<img src="${escapeHtml(b.cover)}" alt="cover of ${escapeHtml(b.title)}" class="modal-cover" />`
         : '';
-      
-      const isBedside = (b.status || 'finished') === 'bedside';
 
-      // Review tags — only shown for finished books (bedside books aren't reviewed yet)
-      const tags = isBedside ? [] : [
+      const status     = b.status || 'finished';
+      const isBedside  = status === 'bedside';
+      const isReading  = status === 'reading';
+      const isFinished = status === 'finished';
+
+      // Review tags — only shown for finished books (unfinished ones aren't reviewed yet)
+      const tags = !isFinished ? [] : [
         ...(b.genres || []),
         ...(b.pace ? [b.pace] : []),
         ...(b.tone || []),
@@ -1530,65 +1795,89 @@
         ? `<div class="tag-pills">${tags.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join('')}</div>`
         : '';
 
-      // Stars are hidden for bedside books (no rating until read)
-      const starsBlock = isBedside
-        ? `<p class="text-xs italic opacity-60 mb-2">— on your bedside —</p>`
-        : `<p class="stars text-lg mb-1" aria-label="rating ${b.rating || 0} of 5">${stars(b.rating || 0)}</p>`;
+      // Stars for finished books; a status line for unfinished ones.
+      let statusBlock;
+      if (isFinished) {
+        statusBlock = `<p class="stars text-lg mb-1" aria-label="rating ${b.rating || 0} of 5">${stars(b.rating || 0)}</p>`;
+      } else if (isReading) {
+        const since = relativeSince(b.startedAt);
+        statusBlock = `<p class="text-xs italic opacity-60 mb-2">— currently reading${since ? ' · ' + escapeHtml(since) : ''} —</p>`;
+      } else {
+        statusBlock = `<p class="text-xs italic opacity-60 mb-2">— on your bedside —</p>`;
+      }
 
-      // "no notes yet" only shown for finished books — bedside might just not have notes
+      // "no notes yet" only shown for finished books — unfinished books just might not have notes
       const notesHtml = b.notes
         ? `<p class="text-sm leading-relaxed">${escapeHtml(b.notes)}</p>`
-        : (isBedside ? '' : '<p class="text-sm leading-relaxed"><em class="opacity-60">no notes yet</em></p>');
+        : (isFinished ? '<p class="text-sm leading-relaxed"><em class="opacity-60">no notes yet</em></p>' : '');
 
-      const deleteLabel = isBedside ? 'Remove from bedside' : 'Delete book';
-      // For bedside books only: prominent "I've read this" button that opens the review/convert flow
-      const moveBlock = isBedside
-        ? `<button type="button" id="moveToShelfBtn" class="btn-wood mt-4">I've read this — move to shelf</button>`
-        : '';
-      // For finished books only: small "Edit review" link next to the delete button
-      const editLink = !isBedside
+      // Primary actions above the divider, by status.
+      let primaryBlock = '';
+      if (isBedside) {
+        primaryBlock = `
+          <button type="button" id="startReadingBtn" class="btn-wood mt-4">Start reading</button>
+          <button type="button" id="finishedNowBtn" class="block w-full text-center mt-2 text-sm underline opacity-70">I've already finished it</button>`;
+      } else if (isReading) {
+        primaryBlock = `
+          <button type="button" id="finishedBtn" class="btn-wood mt-4">I've finished this</button>
+          <button type="button" id="backToBedsideBtn" class="block w-full text-center mt-2 text-sm underline opacity-70">Back to bedside</button>`;
+      }
+
+      const deleteLabel = isFinished ? 'Delete book' : (isBedside ? 'Remove from bedside' : 'Remove book');
+      // Finished books get a small "Edit review" link next to delete.
+      const editLink = isFinished
         ? `<button type="button" id="editBookBtn" class="text-[#5d4a82] text-sm font-semibold opacity-80 hover:opacity-100">Edit review</button>`
         : '';
-      const actionRowJustify = isBedside ? 'justify-end' : 'justify-between';
+      const actionRowJustify = isFinished ? 'justify-between' : 'justify-end';
 
       c.innerHTML = `
         ${cover}
         <h2 id="modalTitle" class="text-xl font-bold leading-tight">${escapeHtml(b.title)}</h2>
         <p class="opacity-70 text-sm mb-2">${escapeHtml(b.author)}</p>
-        ${starsBlock}
+        ${statusBlock}
         ${tagsHtml}
         ${notesHtml}
         <div style="clear:both"></div>
-        ${moveBlock}
+        ${primaryBlock}
         <div class="mt-6 pt-4 border-t border-[rgba(59,36,24,.1)] flex ${actionRowJustify} items-center">
           ${editLink}
           <button type="button" id="deleteBookBtn" class="text-[#8b3a3a] text-sm font-semibold opacity-80 hover:opacity-100">${deleteLabel}</button>
         </div>
       `;
 
-      // Wire up the delete button
+      // Delete / remove
       document.getElementById('deleteBookBtn').addEventListener('click', async () => {
-        const confirmMsg = isBedside
-          ? `Remove "${b.title}" from your bedside?`
-          : `Are you sure you want to remove "${b.title}" from your shelf?`;
+        const confirmMsg = isFinished
+          ? `Are you sure you want to remove "${b.title}" from your shelf?`
+          : `Remove "${b.title}"?`;
         if (confirm(confirmMsg)) {
           const btn = document.getElementById('deleteBookBtn');
-          btn.textContent = isBedside ? 'Removing...' : 'Deleting...';
+          btn.textContent = 'Removing...';
           btn.disabled = true;
-
           await deleteDoc(doc(db, `users/${currentUser.uid}/books`, b.id));
           dlg.close();
         }
       });
 
-      // Bedside-only: "I've read this" opens the add modal in edit-convert mode
       if (isBedside) {
-        document.getElementById('moveToShelfBtn').addEventListener('click', () => {
+        document.getElementById('startReadingBtn').addEventListener('click', async () => {
+          await startReading(b);
+          dlg.close();
+        });
+        document.getElementById('finishedNowBtn').addEventListener('click', () => {
           dlg.close();
           openAddModalForEdit(b);
         });
+      } else if (isReading) {
+        document.getElementById('finishedBtn').addEventListener('click', () => {
+          dlg.close();
+          openAddModalForEdit(b);
+        });
+        document.getElementById('backToBedsideBtn').addEventListener('click', async () => {
+          await moveToBedside(b);
+          dlg.close();
+        });
       } else {
-        // Finished books: "Edit review" opens the same modal pre-populated with existing tags/rating/notes
         document.getElementById('editBookBtn').addEventListener('click', () => {
           dlg.close();
           openAddModalForEdit(b);
@@ -1617,6 +1906,186 @@
     document.getElementById('sortSelect').value = activeSort;
     document.getElementById('sortSelect').addEventListener('change', e => setActiveSort(e.target.value));
     document.getElementById('authorFilter').addEventListener('change', e => setActiveFilter(e.target.value));
+
+    // ---- Stats ----
+    // All derived live from the active profile's finished books. completedAt falls back to createdAt
+    // for books added before completedAt stamping existed.
+    function computeStats() {
+      const finished = books.filter(b =>
+        (b.profile || 'anthony') === activeProfile && (b.status || 'finished') === 'finished');
+      const now = new Date();
+      const yearStart  = new Date(now.getFullYear(), 0, 1).getTime();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const completedMs = b => tsMillis(b.completedAt || b.createdAt);
+
+      const totalBooks = finished.length;
+      const totalPages = finished.reduce((s, b) => s + (b.pageCount || 0), 0);
+      const thisYear   = finished.filter(b => completedMs(b) >= yearStart).length;
+      const rated      = finished.filter(b => b.rating);
+      const avgRating  = rated.length ? rated.reduce((s, b) => s + b.rating, 0) / rated.length : 0;
+      const pagedBooks = finished.filter(b => b.pageCount);
+      const avgPages   = pagedBooks.length ? Math.round(totalPages / pagedBooks.length) : 0;
+
+      const genreCounts = {};
+      finished.forEach(b => (b.genres || []).forEach(g => { genreCounts[g] = (genreCounts[g] || 0) + 1; }));
+      const topGenres = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+      // Books finished per month over the trailing 12 months.
+      const months = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({ label: d.toLocaleString(undefined, { month: 'short' }), key: `${d.getFullYear()}-${d.getMonth()}`, count: 0 });
+      }
+      const monthIndex = new Map(months.map((m, i) => [m.key, i]));
+      finished.forEach(b => {
+        const ms = completedMs(b);
+        if (!ms) return;
+        const d = new Date(ms);
+        const key = `${d.getFullYear()}-${d.getMonth()}`;
+        if (monthIndex.has(key)) months[monthIndex.get(key)].count++;
+      });
+
+      // Average days to finish, for books with both startedAt and completedAt.
+      const durations = finished
+        .map(b => { const s = tsMillis(b.startedAt), c = tsMillis(b.completedAt); return (s && c && c >= s) ? Math.round((c - s) / 86400000) : null; })
+        .filter(d => d != null);
+      const avgDays = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+
+      return { totalBooks, totalPages, thisYear, avgRating, avgPages, topGenres, months, avgDays };
+    }
+
+    function renderStats() {
+      const s = computeStats();
+      const el = document.getElementById('statsContent');
+      if (s.totalBooks === 0) {
+        el.innerHTML = `<p class="stats-empty">No finished books yet — once you review a few, your reading takes shape here.</p>`;
+        return;
+      }
+      const card = (num, label) => `<div class="stat-card"><div class="stat-num">${num}</div><div class="stat-label">${escapeHtml(label)}</div></div>`;
+      const maxGenre = Math.max(1, ...s.topGenres.map(g => g[1]));
+      const genreBars = s.topGenres.map(([g, n]) => `
+        <div class="bar-row">
+          <span class="bar-label" title="${escapeHtml(g)}">${escapeHtml(g)}</span>
+          <span class="bar-track"><span class="bar-fill" style="width:${Math.round(n / maxGenre * 100)}%"></span></span>
+          <span class="bar-value">${n}</span>
+        </div>`).join('');
+      const maxMonth = Math.max(1, ...s.months.map(m => m.count));
+      const monthBars = s.months.map(m => `
+        <div class="month-bar-wrap" title="${escapeHtml(m.label)}: ${m.count}">
+          <div class="month-bar" style="height:${Math.round(m.count / maxMonth * 100)}%"></div>
+          <div class="month-bar-label">${escapeHtml(m.label[0])}</div>
+        </div>`).join('');
+
+      el.innerHTML = `
+        <div class="stat-grid">
+          ${card(s.totalBooks, 'books finished')}
+          ${card(s.thisYear, 'finished this year')}
+          ${card(s.totalPages.toLocaleString(), 'pages read')}
+          ${card(s.avgRating ? s.avgRating.toFixed(1) + '★' : '–', 'average rating')}
+          ${card(s.avgPages || '–', 'avg pages / book')}
+          ${card(s.avgDays != null ? s.avgDays + 'd' : '–', 'avg days to finish')}
+        </div>
+        <div class="stat-section-label">Finished per month</div>
+        <div class="month-chart">${monthBars}</div>
+        <div class="stat-section-label">Top genres</div>
+        ${genreBars || '<p class="stats-empty">No genres tagged yet.</p>'}
+      `;
+    }
+    document.getElementById('statsBtn').addEventListener('click', () => {
+      renderStats();
+      document.getElementById('statsModal').showModal();
+    });
+
+    // ---- Backup: export / import ----
+    // Export every book on this device (all profiles) so a restore is complete. Firestore Timestamps
+    // are normalised to ISO strings so the JSON is portable and re-importable.
+    function exportBackup() {
+      const toIso = ts => { const ms = tsMillis(ts); return ms ? new Date(ms).toISOString() : null; };
+      const payload = {
+        app: 'bookshelf',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        books: books.map(({ id, createdAt, startedAt, completedAt, ...rest }) => ({
+          ...rest,
+          createdAt:   toIso(createdAt),
+          startedAt:   toIso(startedAt),
+          completedAt: toIso(completedAt),
+        })),
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bookshelf-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function importBackup(file) {
+      if (!file || !currentUser) return;
+      let payload;
+      try { payload = JSON.parse(await file.text()); }
+      catch { alert('That file is not valid JSON.'); return; }
+      const list = Array.isArray(payload) ? payload : payload.books;
+      if (!Array.isArray(list) || list.length === 0) { alert('No books found in that backup.'); return; }
+      if (!confirm(`Import ${list.length} book(s) onto this device? They'll be added to your shelf; exact duplicates are skipped.`)) return;
+
+      // Dedupe against what's already here (title|author|profile), and within the file itself.
+      const existing = new Set(books.map(b => `${(b.title || '').toLowerCase()}|${(b.author || '').toLowerCase()}|${b.profile || 'anthony'}`));
+      const toDate = v => (v ? new Date(v) : null);
+      let added = 0, skipped = 0;
+
+      for (const part of chunk(list, 400)) { // Firestore batches cap at 500 writes
+        const batch = writeBatch(db);
+        let writes = 0;
+        for (const raw of part) {
+          if (!raw || !raw.title || !raw.author) { skipped++; continue; }
+          const profile = PROFILES.includes(raw.profile) ? raw.profile : 'anthony';
+          const key = `${raw.title.toLowerCase()}|${raw.author.toLowerCase()}|${profile}`;
+          if (existing.has(key)) { skipped++; continue; }
+          existing.add(key);
+          const colorIdx = Math.floor(Math.random() * spineColors.length);
+          const ref = doc(collection(db, `users/${currentUser.uid}/books`));
+          batch.set(ref, {
+            title: raw.title, author: raw.author,
+            cover: raw.cover || null,
+            rating: raw.rating ?? null,
+            notes: raw.notes || '',
+            genres: Array.isArray(raw.genres) ? raw.genres : [],
+            tone:   Array.isArray(raw.tone)   ? raw.tone   : [],
+            pace: raw.pace || null,
+            lengthFelt: raw.lengthFelt || null,
+            chapterLength: raw.chapterLength || null,
+            pageCount: raw.pageCount || null,
+            publishedDate: raw.publishedDate || null,
+            status: raw.status || 'finished',
+            profile,
+            detailsAttempted: raw.detailsAttempted ?? true,
+            fromRecommendation: raw.fromRecommendation || false,
+            spine: raw.spine || spineColors[colorIdx],
+            ink:   raw.ink   || inkColors[colorIdx],
+            height: raw.height || (Math.floor(Math.random() * (190 - 140 + 1)) + 140),
+            width:  raw.width  || (Math.floor(Math.random() * (46  - 30  + 1)) + 30),
+            createdAt:   toDate(raw.createdAt) || serverTimestamp(),
+            startedAt:   toDate(raw.startedAt),
+            completedAt: toDate(raw.completedAt),
+          });
+          added++; writes++;
+        }
+        if (writes > 0) await batch.commit();
+      }
+      alert(`Imported ${added} book(s)${skipped ? `, skipped ${skipped} (duplicate or invalid)` : ''}.`);
+    }
+
+    document.getElementById('exportBtn').addEventListener('click', exportBackup);
+    document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+    document.getElementById('importFile').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = ''; // let the same file be re-selected later
+      importBackup(file);
+    });
 
     // Re-pack shelves when the container width changes (window resize, phone rotation).
     // Debounced so a drag-resize doesn't fire on every pixel.
