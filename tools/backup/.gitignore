@@ -1,0 +1,7 @@
+# Never commit secrets or backup output
+node_modules/
+backups/
+*.json
+!package.json
+service-account*.json
+*-key.json
