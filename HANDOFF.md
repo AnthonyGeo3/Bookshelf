@@ -5,8 +5,8 @@ collaborator_profile: Amy (girlfriend — second local profile)
 deploy_url: https://anthonygeo3.github.io/Bookshelf/
 repo_path: G:\Coding\Bookshelf\Bookshelf\
 status: v1 feature-complete
-last_updated: 2026-05-22
-cache_name: bookshelf-v19
+last_updated: 2026-05-28
+cache_name: bookshelf-v20
 firebase_project: bookshelf-anthony
 files:
   - index.html
@@ -50,8 +50,17 @@ G:\Coding\Bookshelf\Bookshelf\
 ├── icons/
 │   ├── icon-192.png # Homemade-feel book-stack icon
 │   └── icon-512.png # Same, larger
+├── tools/
+│   └── backup/      # SERVER-SIDE only, not deployed. Firebase Admin SDK cron backup.
+│       ├── backup.mjs   # Pulls all books from Firestore -> timestamped JSON on the DAS
+│       ├── package.json
+│       ├── README.md    # Service-account + cron setup
+│       └── .gitignore   # Blocks the SA key + backup output from git
 └── HANDOFF.md       # This file
 ```
+
+**Note:** `tools/backup/` runs on Anthony's always-on server, not in the browser, and is
+not in `CORE_ASSETS`. The service-account key must never be committed.
 
 ### Key code anchors in `index.html`
 
@@ -76,6 +85,10 @@ Search for these strings to locate functionality fast:
 | Chip groups setup | `const CHIP_GROUPS`, `function setupChipGroup` |
 | Profile swap | `function setActiveProfile` |
 | View swap (Shelf/Bedside) | `function setActiveView` |
+| Currently-reading strip | `function renderReadingStrip`, `function startReading`, `function moveToBedside` |
+| Stats modal | `function computeStats`, `function renderStats` |
+| Backup export/import | `function exportBackup`, `async function importBackup` |
+| Auto-tag from pool | `function findInPool`, `function prefillChipsFromPool` |
 
 ## 4. Firebase
 
@@ -110,10 +123,11 @@ Search for these strings to locate functionality fast:
 | `chapterLength` | string \| null | "Short" / "Medium" / "Long" |
 | `pageCount` | number \| null | From Google Books |
 | `publishedDate` | string \| null | Raw Google value, e.g. "1949" or "2016-07-26" |
-| `status` | "finished" \| "bedside" | Determines which view the book appears in |
+| `status` | "finished" \| "bedside" \| "reading" | Determines where the book appears. "reading" = currently-reading strip atop the Shelf. |
 | `profile` | "anthony" \| "amy" | Which profile owns this book |
 | `createdAt` | Timestamp | Server timestamp on add |
-| `completedAt` | Timestamp \| null | Stamped when status becomes 'finished'. Null for bedside. Falls back to `createdAt` in sort for old books. |
+| `startedAt` | Timestamp \| null | Stamped when status becomes 'reading'. Null otherwise. Used for the "reading for N days" label + avg-days-to-finish stat. |
+| `completedAt` | Timestamp \| null | Stamped when status becomes 'finished' (from any prior state). Null for bedside/reading. Falls back to `createdAt` in sort for old books. |
 | `spine` | string (hex) | Random colour for spine fallback view |
 | `ink` | string (hex) | Random text colour for spine |
 | `height` | number (140–190) | Random per-book height in px |
@@ -202,16 +216,21 @@ Search for these strings to locate functionality fast:
 - [x] Cover/details backfill for legacy books (one-shot per session)
 - [x] PWA with cache-first shell, installable on mobile
 - [x] Firestore security rules locking everything to owning user
+- [x] **Currently-reading** strip atop the Shelf (status "reading"; bedside→reading→finished; `startedAt` stamping) — *added 2026-05-28*
+- [x] **Stats** modal (chart icon in header): totals, finished this year, pages read, avg rating, avg pages/book, avg days-to-finish, finished-per-month bars, top-genre bars — *added 2026-05-28*
+- [x] **Backup/restore**: in-app one-tap JSON Export/Import (in the Stats modal) + server-side `tools/backup` cron script (Firebase Admin SDK) — *added 2026-05-28*
+- [x] **Auto-tagging**: adding a book that matches the curated pool pre-fills genre/tone/pace/chapter chips (Google categories as genre backstop); full manual override — *added 2026-05-28*
+- [x] Recommendation pool expanded from 50 classics to ~90 incl. modern bestsellers/popular titles — *added 2026-05-28*
 
 ## 9. Deliberate non-features (don't re-suggest unprompted)
 
 These have been explicitly rejected or scoped out. Adding them would be a regression of intent.
 
 - ❌ **Difficulty rating** — Anthony rejected on 2026-05-22. No standardised reading-level source (Lexile is paywalled, Flesch-Kincaid needs full text we don't have). Guesses didn't add value.
-- ❌ **Cross-device sync / login UX** — explicit reject. Anthony: "I dislike how you have to login to every website these days." Each device is its own world.
+- ❌ **Cross-device sync / login UX** — explicit reject. Anthony: "I dislike how you have to login to every website these days." Each device is its own world. **Note:** backup/restore now exists (in-app JSON export/import + server-side cron pull) — that is *not* login/sync, just data safety, and was explicitly wanted.
 - ❌ **Editing book title/author** — only review fields are editable. Wrong-book = delete + re-add.
 - ❌ **Per-view sort/filter state** — shared between views for now. Easy to split if asked.
-- ❌ **Currently-reading status** — only "finished" and "bedside", no in-progress state.
+- ✅ ~~**Currently-reading status**~~ — **now built (2026-05-28).** Third status "reading", surfaced as a highlighted strip at the top of the Shelf. bedside → reading → finished, with `startedAt`/`completedAt` stamping.
 - ❌ **Recommendation engine scoring by chapter length or pageCount** — these are display-only. Could be added if asked but currently not factored into scoring weights.
 - ❌ **Half-star ratings** — integer 1–5 only.
 - ❌ **AI-polished assets** — homemade is the aesthetic. Don't pitch Claude Design / Gemini Image for icon redesigns.
@@ -242,13 +261,16 @@ Hard rules, no exceptions:
 - Anthony asked to condense the conversation but couldn't find the option in Cowork UI — hence this handoff doc as the alternative.
 - **No outstanding work items.** Project is in a stable, fully-tested state.
 
-**Possible future asks Anthony has hinted at:**
-- Expand the CLASSICS list with more titles
+**As of 2026-05-28:** large feature pass landed on branch `claude/handoff-file-review-TJoEK` — currently-reading status, stats modal, backup/restore (in-app + server cron), auto-tagging from the pool, expanded recommendation pool, plus small bug fixes (a11y rating label, spine width floor, author-filter rebuild memoisation). Cache bumped to v20.
+
+**Possible future asks Anthony has hinted at (remaining):**
+- ✅ ~~Expand the CLASSICS list~~ — done (now ~90 titles incl. bestsellers).
+- ✅ ~~Stats page~~ — done.
+- ✅ ~~"Currently reading" 3rd status~~ — done.
 - Show pageCount in the book detail modal (currently stored + sortable but not displayed)
 - Sort by chapter length (would be a 4th sort option, ordered Short → Medium → Long)
 - Factor pageCount + chapterLength preferences into the mystery recommendation scoring
-- Stats page (books per month, total pages, top genre, etc.)
-- "Currently reading" 3rd status (deferred for now)
+- `restore.mjs` companion to the backup script for bulk programmatic restore into Firestore
 
 ## 13. Quick onboarding checklist (first interaction in a future session)
 
