@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bookshelf — mockup: Shelf</title>
+<style>
+  :root{
+    --paper:#f4ecd8; --paper-shade:#e9dcc0; --ink:#3b2418;
+    --wood-light:#6b4226; --wood-mid:#4a2c1a; --wood-dark:#2e1c10; --accent:#8b3a3a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:#d9d2c4; font-family:ui-serif,Georgia,"Times New Roman",serif; color:var(--ink);
+       display:flex; justify-content:center; padding:24px 0; min-height:100vh;}
+  .phone{width:412px; min-height:860px; background:
+        repeating-linear-gradient(0deg, transparent 0 26px, rgba(59,36,24,.025) 26px 27px),
+        linear-gradient(180deg, var(--paper), var(--paper-shade));
+        border-radius:34px; box-shadow:0 24px 60px rgba(0,0,0,.28); overflow:hidden; position:relative;}
+  h1,h2,h3{font-family:ui-serif,"Iowan Old Style",Georgia,serif; margin:0;}
+
+  /* ---------- condensed header ---------- */
+  .top{display:flex; justify-content:space-between; align-items:flex-start; padding:22px 18px 8px;}
+  .brand h1{font-size:27px; font-weight:700; letter-spacing:-.01em;}
+  .brand p{font-size:12px; font-style:italic; opacity:.55; margin-top:2px;}
+  .top-right{display:flex; flex-direction:column; align-items:flex-end; gap:9px;}
+  .icons{display:flex; gap:8px;}
+  .icon-btn{width:36px; height:36px; border-radius:999px; border:1px solid rgba(59,36,24,.16);
+            background:rgba(59,36,24,.06); display:flex; align-items:center; justify-content:center; color:var(--ink);}
+  .icon-btn svg{width:18px;height:18px}
+  .toggle{display:inline-flex; align-items:center; gap:6px; padding:7px 15px; border-radius:999px;
+          background:var(--wood-mid); color:var(--paper); font-size:13px; letter-spacing:.02em; border:none; cursor:pointer;
+          box-shadow:0 3px 8px rgba(0,0,0,.18);}
+
+  /* ---------- sort control ---------- */
+  .controls{padding:6px 18px 2px;}
+  .sort{display:inline-flex; align-items:center; gap:7px; font-size:13px; opacity:.7; cursor:pointer;}
+  .sort svg{width:14px;height:14px}
+  .sort b{font-weight:600; opacity:.95}
+
+  /* ---------- currently reading ---------- */
+  .reading{padding:10px 18px 2px;}
+  .reading .lab{font-size:11px; text-transform:uppercase; letter-spacing:.09em; opacity:.5; font-weight:600; margin-bottom:7px;}
+  .rcard{display:flex; gap:13px; align-items:center; padding:12px; border-radius:13px;
+         background:rgba(255,255,255,.55); border:1px solid rgba(59,36,24,.12);
+         box-shadow:0 5px 14px rgba(0,0,0,.09);}
+  .rcover{width:48px; height:72px; border-radius:4px; flex-shrink:0; box-shadow:0 3px 7px rgba(0,0,0,.25);
+          background:linear-gradient(150deg,#11243f,#2a4d6e 60%,#3f7fb0); color:#cfe3f5; font-size:8px;
+          display:flex; align-items:center; justify-content:center; text-align:center; padding:4px; font-weight:700;}
+  .rmeta{flex:1; min-width:0;}
+  .rmeta .t{font-weight:700; font-size:14px; line-height:1.15;}
+  .rmeta .a{font-size:11px; opacity:.6; margin:1px 0 7px;}
+  .bar{height:8px; border-radius:999px; background:rgba(59,36,24,.12); overflow:hidden;}
+  .bar > span{display:block; height:100%; width:37%; background:linear-gradient(90deg,var(--wood-mid),var(--wood-light)); border-radius:999px;}
+  .pg{font-size:10px; opacity:.55; margin-top:5px; font-variant-numeric:tabular-nums;}
+  .startlink{font-size:11px; opacity:.6; text-decoration:underline; margin-top:9px; display:inline-block;}
+
+  /* ---------- month section dividers ---------- */
+  .month{display:flex; align-items:center; gap:12px; margin:20px 18px 0; color:rgba(59,36,24,.55);
+         font-size:11px; letter-spacing:.1em; text-transform:uppercase; font-weight:600;}
+  .month::before,.month::after{content:""; height:1px; background:rgba(59,36,24,.16); flex:1;}
+
+  /* ---------- shelves ---------- */
+  .shelf{padding-bottom:10px;}
+  .shelf-row{display:flex; align-items:flex-end; justify-content:space-evenly; padding:8px 20px 0; min-height:166px;}
+  .plank{height:16px; margin:0 12px; border-radius:2px 2px 6px 6px;
+         background:linear-gradient(180deg,var(--wood-light) 0%,var(--wood-mid) 55%,var(--wood-dark) 100%);
+         box-shadow:0 8px 12px -3px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.25);}
+
+  .book{width:94px; border-radius:3px 3px 1px 1px; box-shadow:2px 4px 7px rgba(0,0,0,.24);
+        color:#f4ecd8; padding:12px 9px; display:flex; flex-direction:column; justify-content:space-between;
+        font-size:12px; line-height:1.18;}
+  .book .bt{font-weight:700;}
+  .book .ba{font-size:10px; opacity:.8; font-weight:500;}
+  .book:nth-child(3n){transform:rotate(-1deg)}
+  .book:nth-child(2n){transform:rotate(.8deg)}
+  /* spine-out */
+  .spine{width:34px; writing-mode:vertical-rl; text-orientation:mixed; align-items:center; text-align:center;
+         font-size:11px; font-weight:600; letter-spacing:.03em; padding:12px 4px;
+         box-shadow:inset -3px 0 0 rgba(0,0,0,.22), inset 3px 0 0 rgba(255,255,255,.10), 2px 4px 7px rgba(0,0,0,.24);}
+
+  footer{text-align:center; font-size:11px; opacity:.5; padding:18px 0 26px;}
+  .note{position:absolute; top:10px; left:0; right:0; text-align:center; font-size:10px; opacity:.4;}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="note">mockup — Shelf view · grouped by month</div>
+
+    <header class="top">
+      <div class="brand">
+        <h1>Bookshelf</h1>
+        <p>finished books look better on a shelf</p>
+      </div>
+      <div class="top-right">
+        <div class="icons">
+          <span class="icon-btn" title="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="20" x2="6" y2="13"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="9"/></svg></span>
+          <span class="icon-btn" title="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></span>
+        </div>
+        <button class="toggle">Go to Bedside →</button>
+      </div>
+    </header>
+
+    <div class="controls">
+      <span class="sort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>sort by <b>most recent ▾</b></span>
+    </div>
+
+    <div class="reading">
+      <div class="lab">Currently reading</div>
+      <div class="rcard">
+        <div class="rcover">WE ARE<br>LEGION</div>
+        <div class="rmeta">
+          <div class="t">We Are Legion (We Are Bob)</div>
+          <div class="a">Dennis E. Taylor</div>
+          <div class="bar"><span></span></div>
+          <div class="pg">page 142 of 384 · tap to update</div>
+        </div>
+      </div>
+      <span class="startlink">+ start another book</span>
+    </div>
+
+    <div class="month">May 2026</div>
+    <section class="shelf">
+      <div class="shelf-row">
+        <div class="book" style="background:linear-gradient(155deg,#0e2a23,#16584a 70%,#1f8a73)"><span class="bt">Project Hail Mary</span><span class="ba">Andy Weir</span></div>
+        <div class="book" style="background:linear-gradient(155deg,#5a2a12,#9c5a1e 70%,#caa14a)"><span class="bt">Circe</span><span class="ba">Madeline Miller</span></div>
+        <div class="book" style="background:linear-gradient(155deg,#0b1430,#1d2b52 65%,#33508c)"><span class="bt">Dark Matter</span><span class="ba">Blake Crouch</span></div>
+      </div>
+      <div class="plank"></div>
+    </section>
+
+    <div class="month">April 2026</div>
+    <section class="shelf">
+      <div class="shelf-row">
+        <div class="book" style="background:linear-gradient(155deg,#2b2b2b,#555 70%,#888); color:#f4ecd8"><span class="bt">The Stranger</span><span class="ba">Albert Camus</span></div>
+        <div class="spine book" style="background:linear-gradient(90deg,#3d5a3d,#3d5a3d 65%,rgba(0,0,0,.18)); color:#f1faee">Hamlet — Shakespeare</div>
+        <div class="book" style="background:linear-gradient(155deg,#27405e,#3d6390 70%,#7fa8cf)"><span class="bt">Educated</span><span class="ba">Tara Westover</span></div>
+      </div>
+      <div class="plank"></div>
+    </section>
+
+    <div class="month">March 2026</div>
+    <section class="shelf">
+      <div class="shelf-row">
+        <div class="book" style="background:linear-gradient(155deg,#5a3a12,#a9711f 70%,#e0b85a)"><span class="bt">Dune</span><span class="ba">Frank Herbert</span></div>
+        <div class="book" style="background:linear-gradient(155deg,#9a8a3a,#cbb858 70%,#efe39a); color:#3b2418"><span class="bt" style="color:#3b2418">Klara and the Sun</span><span class="ba" style="color:#3b2418">Kazuo Ishiguro</span></div>
+      </div>
+      <div class="plank"></div>
+    </section>
+
+    <footer>made with love · v1</footer>
+  </div>
+</body>
+</html>
