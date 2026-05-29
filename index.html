@@ -526,6 +526,12 @@
                class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
       </div>
 
+      <div class="review-only">
+        <label class="block text-sm opacity-70 mb-1" for="addPageCount">Pages <span class="opacity-50">(from Google — edit if wrong)</span></label>
+        <input type="number" id="addPageCount" min="1" placeholder="e.g. 310"
+               class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+      </div>
+
       <!-- Tagged review fields — feed the recommendation engine; hidden when adding to bedside -->
       <div class="review-only">
         <label class="chip-group-label">Genre <span class="opacity-50">(pick any)</span></label>
@@ -1017,6 +1023,8 @@
       else { coverEl.removeAttribute('src'); coverEl.style.display = 'none'; }
       document.getElementById('selectedTitle').textContent = title;
       document.getElementById('selectedAuthor').textContent = author;
+      // Pre-fill the editable page count from Google's value (blank if it didn't return one).
+      document.getElementById('addPageCount').value = pageCount || '';
 
       // Auto-pre-select genre chips from Google's categories. User can adjust before saving.
       // Only touches the genre group — other chips are left untouched.
@@ -1084,6 +1092,7 @@
       document.getElementById('addAuthor').value = '';
       setRating(5);
       setCompletedDateInput(null);
+      document.getElementById('addPageCount').value = '';
       document.getElementById('addNotes').value = '';
       clearAllChips();
     }
@@ -1135,10 +1144,11 @@
       document.getElementById('selectedAuthor').textContent = b.author;
       document.getElementById('changeSelection').style.display = 'none';
 
-      // Pre-fill rating + date + notes from whatever's saved (date falls back to today when
+      // Pre-fill rating + date + pages + notes from whatever's saved (date falls back to today when
       // converting a bedside/reading book that was never finished before).
       setRating((b.rating != null) ? b.rating : 5);
       setCompletedDateInput(b.completedAt);
+      document.getElementById('addPageCount').value = b.pageCount || '';
       document.getElementById('addNotes').value  = b.notes || '';
 
       // Pre-select chips matching saved tags. CSS.escape handles values with slashes/spaces safely.
@@ -1424,6 +1434,14 @@
                    : 'finished';
       const isFinished = status === 'finished';
 
+      // Page count: the form field wins (user can correct Google's value); otherwise fall back to
+      // what we fetched, then to the existing book's value when editing.
+      const enteredPages = parseInt(document.getElementById('addPageCount').value, 10);
+      const existingBook = editingId ? books.find(b => b.id === editingId) : null;
+      const finalPageCount = (!isNaN(enteredPages) && enteredPages > 0)
+        ? enteredPages
+        : (pageCount || existingBook?.pageCount || null);
+
       // Review fields only make sense for finished books. Bedside/reading get nulled out so we
       // don't store a phantom 5-star rating on a book that hasn't been read.
       const rating = isFinished ? parseInt(document.getElementById('addRating').value, 10) : null;
@@ -1441,6 +1459,7 @@
           const update = {
             rating, notes, status: 'finished',
             genres, pace, tone, lengthFelt, chapterLength,
+            pageCount: finalPageCount,
           };
           if (completedDate)      update.completedAt = completedDate;
           else if (wasUnfinished) update.completedAt = serverTimestamp();
@@ -1450,7 +1469,7 @@
           await addDoc(collection(db, `users/${currentUser.uid}/books`), {
             title, author, rating, notes,
             cover: cover || null,
-            pageCount, publishedDate,
+            pageCount: finalPageCount, publishedDate,
             detailsAttempted: true,
             profile: activeProfile,
             status,
