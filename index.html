@@ -1663,7 +1663,7 @@
                <span class="reading-bar"><span style="width:${pct}%"></span></span>
                <span class="reading-page">${cur ? `page ${cur} of ${pc} · tap to update` : `${pc} pages · tap to set your page`}</span>
              </span>`
-          : `<span class="reading-card-since">${escapeHtml(relativeSince(b.startedAt))}</span>`;
+          : `<span class="reading-card-since">${escapeHtml(relativeSince(b.startedAt))} · tap to add pages</span>`;
         card.innerHTML = `
           ${coverHtml}
           <span class="reading-card-meta">
@@ -1851,19 +1851,9 @@
         statusBlock = `<p class="stars text-lg mb-1" aria-label="rating ${b.rating || 0} of 5">${stars(b.rating || 0)}</p>${finLine}`;
       } else if (isReading) {
         const since = relativeSince(b.startedAt);
-        const pc = b.pageCount || 0;
-        const cur = b.currentPage || 0;
-        const pct = pc ? Math.min(100, Math.round(cur / pc * 100)) : 0;
-        const barHtml = pc ? `<div class="reading-bar" style="margin:8px 0 6px"><span style="width:${pct}%"></span></div>` : '';
         statusBlock = `
           <p class="text-xs italic opacity-60 mb-1">— currently reading${since ? ' · ' + escapeHtml(since) : ''} —</p>
-          ${barHtml}
-          <div class="flex items-center gap-2 text-sm mb-1">
-            <label class="opacity-70" for="readingPageInput">page</label>
-            <input type="number" id="readingPageInput" min="0" ${pc ? `max="${pc}"` : ''} value="${cur || ''}" placeholder="0"
-                   class="w-20 p-1 border rounded bg-[var(--paper)] text-[var(--ink)]" />
-            <span class="opacity-60">${pc ? `of ${pc}` : 'pages'}</span>
-          </div>`;
+          <div id="readingControls"></div>`;
       } else {
         statusBlock = `<p class="text-xs italic opacity-60 mb-2">— on your bedside —</p>`;
       }
@@ -1939,14 +1929,47 @@
           await moveToBedside(b);
           dlg.close();
         });
-        // Update current page (clamped to the book's length). Saves on change; the strip re-renders.
-        const pageInput = document.getElementById('readingPageInput');
-        pageInput.addEventListener('change', async () => {
-          let v = parseInt(pageInput.value, 10);
-          if (isNaN(v) || v < 0) v = 0;
-          if (b.pageCount && v > b.pageCount) { v = b.pageCount; pageInput.value = String(v); }
-          await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), { currentPage: v });
-        });
+
+        // Reading progress: current page + an editable total (Google Books often omits the page
+        // count for some editions, so you can type it in here). Each saves on change and re-renders
+        // so the bar updates live. We mutate the local `b` for instant feedback.
+        const renderReadingControls = () => {
+          const wrap = document.getElementById('readingControls');
+          const pc = b.pageCount || 0;
+          const cur = b.currentPage || 0;
+          const pct = pc ? Math.min(100, Math.round(cur / pc * 100)) : 0;
+          wrap.innerHTML = `
+            ${pc ? `<div class="reading-bar" style="margin:8px 0 7px"><span style="width:${pct}%"></span></div>` : ''}
+            <div class="flex items-center gap-2 text-sm mb-1">
+              <label class="opacity-70" for="curPageInput">page</label>
+              <input type="number" id="curPageInput" min="0" ${pc ? `max="${pc}"` : ''} value="${cur || ''}" placeholder="0"
+                     class="w-16 p-1 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+              <span class="opacity-70">of</span>
+              <input type="number" id="totPageInput" min="1" value="${pc || ''}" placeholder="?"
+                     class="w-16 p-1 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+              <span class="opacity-60">pages</span>
+            </div>
+            ${pc ? '' : '<p class="text-xs opacity-50">add the total pages to track progress</p>'}`;
+
+          wrap.querySelector('#curPageInput').addEventListener('change', async (e) => {
+            let v = parseInt(e.target.value, 10);
+            if (isNaN(v) || v < 0) v = 0;
+            if (b.pageCount && v > b.pageCount) v = b.pageCount;
+            b.currentPage = v;
+            await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), { currentPage: v });
+            renderReadingControls();
+          });
+          wrap.querySelector('#totPageInput').addEventListener('change', async (e) => {
+            let v = parseInt(e.target.value, 10);
+            if (isNaN(v) || v <= 0) v = null;
+            const update = { pageCount: v };
+            b.pageCount = v;
+            if (v && (b.currentPage || 0) > v) { b.currentPage = v; update.currentPage = v; }
+            await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), update);
+            renderReadingControls();
+          });
+        };
+        renderReadingControls();
       } else {
         document.getElementById('editBookBtn').addEventListener('click', () => {
           dlg.close();
