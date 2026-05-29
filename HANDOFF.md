@@ -127,7 +127,7 @@ Search for these strings to locate functionality fast:
 | `profile` | "anthony" \| "amy" | Which profile owns this book |
 | `createdAt` | Timestamp | Server timestamp on add |
 | `startedAt` | Timestamp \| null | Stamped when status becomes 'reading'. Null otherwise. Used for the "reading for N days" label + avg-days-to-finish stat. |
-| `completedAt` | Timestamp \| null | Stamped when status becomes 'finished' (from any prior state). Null for bedside/reading. Falls back to `createdAt` in sort for old books. |
+| `completedAt` | Timestamp \| null | Finish date. Defaults to "now" when a book becomes 'finished', but is **user-editable** via the "Date finished" field in the add/edit review form (so backlog books can be backdated). Null for bedside/reading. Falls back to `createdAt` in sort/stats for old books. |
 | `spine` | string (hex) | Random colour for spine fallback view |
 | `ink` | string (hex) | Random text colour for spine |
 | `height` | number (140–190) | Random per-book height in px |

@@ -508,6 +508,12 @@
         <input type="hidden" id="addRating" value="5" />
       </div>
 
+      <div class="review-only">
+        <label class="block text-sm opacity-70 mb-1" for="addCompletedDate">Date finished</label>
+        <input type="date" id="addCompletedDate"
+               class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+      </div>
+
       <!-- Tagged review fields — feed the recommendation engine; hidden when adding to bedside -->
       <div class="review-only">
         <label class="chip-group-label">Genre <span class="opacity-50">(pick any)</span></label>
@@ -1042,6 +1048,26 @@
       activate('chapterChips', entry.chapterLength);
     }
 
+    // ---- Completion-date input helpers ----
+    function dateToInputValue(d) {
+      const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    // Parse a yyyy-mm-dd value into a local Date at noon (avoids UTC day-shift). Null if blank.
+    function parseDateInput(value) {
+      if (!value) return null;
+      const [y, m, d] = value.split('-').map(Number);
+      if (!y || !m || !d) return null;
+      return new Date(y, m - 1, d, 12, 0, 0);
+    }
+    // Seed the "Date finished" input from a timestamp (or today if none), capped at today.
+    function setCompletedDateInput(ts) {
+      const input = document.getElementById('addCompletedDate');
+      const ms = tsMillis(ts);
+      input.value = dateToInputValue(ms ? new Date(ms) : new Date());
+      input.max = dateToInputValue(new Date());
+    }
+
     function resetAddForm() {
       selectedBook = null;
       lastQuery = '';
@@ -1056,6 +1082,7 @@
       document.getElementById('addTitle').value = '';
       document.getElementById('addAuthor').value = '';
       setRating(5);
+      setCompletedDateInput(null);
       document.getElementById('addNotes').value = '';
       clearAllChips();
     }
@@ -1077,6 +1104,7 @@
       modal.removeAttribute('data-editing'); // not in edit mode for the normal add flow
       document.getElementById('addTitleLabel').textContent = LABELS[mode].title;
       document.getElementById('saveBookBtn').textContent   = LABELS[mode].save;
+      setCompletedDateInput(null); // defaults to today; only visible/used for finished adds
       modal.showModal();
       // small delay so dialog finishes opening before focus
       setTimeout(() => document.getElementById('bookSearch').focus(), 50);
@@ -1106,8 +1134,10 @@
       document.getElementById('selectedAuthor').textContent = b.author;
       document.getElementById('changeSelection').style.display = 'none';
 
-      // Pre-fill rating + notes from whatever's saved
+      // Pre-fill rating + date + notes from whatever's saved (date falls back to today when
+      // converting a bedside/reading book that was never finished before).
       setRating((b.rating != null) ? b.rating : 5);
+      setCompletedDateInput(b.completedAt);
       document.getElementById('addNotes').value  = b.notes || '';
 
       // Pre-select chips matching saved tags. CSS.escape handles values with slashes/spaces safely.
@@ -1392,17 +1422,22 @@
       // don't store a phantom 5-star rating on a book that hasn't been read.
       const rating = isFinished ? parseInt(document.getElementById('addRating').value, 10) : null;
       const notes  = document.getElementById('addNotes').value;
+      // User-chosen finish date (review forms only). A Date is stored directly; Firestore turns it
+      // into a Timestamp. Falls back to "now" when finishing for the first time with no date given.
+      const completedDate = isFinished ? parseDateInput(document.getElementById('addCompletedDate').value) : null;
 
       try {
         if (editingId) {
-          // Editing existing — review fields only. Converting bedside/reading → shelf stamps completedAt.
+          // Editing existing — review fields only. Always (re)set completedAt from the chosen date so
+          // backdated books land in the right month; fall back to now if it's the first finish.
           const editingBook = books.find(b => b.id === editingId);
           const wasUnfinished = editingBook && (editingBook.status || 'finished') !== 'finished';
           const update = {
             rating, notes, status: 'finished',
             genres, pace, tone, lengthFelt, chapterLength,
           };
-          if (wasUnfinished) update.completedAt = serverTimestamp();
+          if (completedDate)      update.completedAt = completedDate;
+          else if (wasUnfinished) update.completedAt = serverTimestamp();
           await updateDoc(doc(db, `users/${currentUser.uid}/books`, editingId), update);
         } else {
           const colorIdx = Math.floor(Math.random() * spineColors.length);
@@ -1420,7 +1455,7 @@
             width:  Math.floor(Math.random() * (46  - 30  + 1)) + 30,  // 30-46px
             createdAt: serverTimestamp(),
             startedAt:   status === 'reading'  ? serverTimestamp() : null,
-            completedAt: isFinished ? serverTimestamp() : null,
+            completedAt: isFinished ? (completedDate || serverTimestamp()) : null,
           });
         }
         document.getElementById('addModal').close();
@@ -1798,7 +1833,12 @@
       // Stars for finished books; a status line for unfinished ones.
       let statusBlock;
       if (isFinished) {
-        statusBlock = `<p class="stars text-lg mb-1" aria-label="rating ${b.rating || 0} of 5">${stars(b.rating || 0)}</p>`;
+        const finMs = tsMillis(b.completedAt || b.createdAt);
+        const finStr = finMs
+          ? new Date(finMs).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+          : '';
+        const finLine = finStr ? `<p class="text-xs opacity-50 mb-2">finished ${escapeHtml(finStr)}</p>` : '';
+        statusBlock = `<p class="stars text-lg mb-1" aria-label="rating ${b.rating || 0} of 5">${stars(b.rating || 0)}</p>${finLine}`;
       } else if (isReading) {
         const since = relativeSince(b.startedAt);
         statusBlock = `<p class="text-xs italic opacity-60 mb-2">— currently reading${since ? ' · ' + escapeHtml(since) : ''} —</p>`;
