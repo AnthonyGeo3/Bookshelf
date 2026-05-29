@@ -86,6 +86,8 @@ Search for these strings to locate functionality fast:
 | Profile swap | `function setActiveProfile` |
 | View swap (Shelf/Bedside) | `function setActiveView` |
 | Currently-reading strip | `function renderReadingStrip`, `function startReading`, `function moveToBedside` |
+| Shelf grouping into sections | `function buildSections` (months/authors/genres/page-bands per sort), `function buildShelfEl` |
+| View toggle (Shelf ↔ Bedside) | `id="viewToggle"`, `function setActiveView` |
 | Stats modal | `function computeStats`, `function renderStats` |
 | Backup export/import | `function exportBackup`, `async function importBackup` |
 | Auto-tag from pool | `function findInPool`, `function prefillChipsFromPool` |
@@ -127,7 +129,8 @@ Search for these strings to locate functionality fast:
 | `profile` | "anthony" \| "amy" | Which profile owns this book |
 | `createdAt` | Timestamp | Server timestamp on add |
 | `startedAt` | Timestamp \| null | Stamped when status becomes 'reading'. Null otherwise. Used for the "reading for N days" label + avg-days-to-finish stat. |
-| `completedAt` | Timestamp \| null | Stamped when status becomes 'finished' (from any prior state). Null for bedside/reading. Falls back to `createdAt` in sort for old books. |
+| `currentPage` | number \| null | Page you're on while `status === 'reading'`. Drives the reading-card progress bar. Set via the reading detail modal. Null otherwise. |
+| `completedAt` | Timestamp \| null | Finish date. Defaults to "now" when a book becomes 'finished', but is **user-editable** via the "Date finished" field in the add/edit review form (so backlog books can be backdated). Null for bedside/reading. Falls back to `createdAt` in sort/stats for old books. |
 | `spine` | string (hex) | Random colour for spine fallback view |
 | `ink` | string (hex) | Random text colour for spine |
 | `height` | number (140–190) | Random per-book height in px |
@@ -183,11 +186,18 @@ Search for these strings to locate functionality fast:
 4. `updateDoc` flips status to 'finished' AND stamps `completedAt = serverTimestamp()`
 5. Book disappears from bedside, appears on shelf
 
-### Sort + filter (both views)
-- Sort options: Most recent / Author / Genre / Length
-- Filter: by author (dropdown populated from current view's books)
-- Shared state across views — both stored in localStorage. If a filter doesn't apply when switching views, it's silently cleared.
-- Bedside also gets these controls now (added 2026-05-22).
+### Sort = grouped sections (both views) — redesigned 2026-05-29
+- One `sort by` control (funnel). Picking a sort **groups the shelves into labelled sections** via `buildSections`:
+  - **most recent** → month sections ("May 2026"), newest first
+  - **author** → author sections, alphabetical
+  - **genre** → primary-genre sections (untagged last)
+  - **length** → 100-page bands ("Under 100 pages", "100–199 pages", … unknown last)
+- The old separate **author filter dropdown was removed** — author *grouping* replaces it.
+- Sort choice stored in `localStorage['bookshelf:sort']`. Applies to both views.
+
+### Header + navigation — redesigned 2026-05-29
+- Condensed header: title + subtitle left; `stats` + `profile` icons top-right; a single **view-toggle button** beneath them ("Go to Bedside →" / "← Back to Shelf"). The old two-tab `.view-switcher` is gone; the purple wall tells you you're on Bedside.
+- Books render **spread evenly across the plank** (`justify-content: space-evenly`), rows tighter together. The mystery "?" tile sits on its own pinned shelf at the top of Bedside.
 
 ### Backfill (one-shot per session)
 - After auth resolves and books load, `backfillMissingDetails` runs once

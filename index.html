@@ -19,6 +19,8 @@
       --wood-mid: #4a2c1a;
       --wood-dark: #2e1c10;
       --accent: #8b3a3a;
+      --plum-mid: #4a3b6b;
+      --plum-deep: #2e1b4a;
     }
     html, body { background: var(--paper); color: var(--ink); }
     body {
@@ -32,17 +34,19 @@
     h1, h2 { font-family: ui-serif, "Iowan Old Style", Georgia, serif; }
 
     /* ---------- bookcase ---------- */
-    .shelf { position: relative; padding-bottom: 18px; }
+    .shelf { position: relative; padding-bottom: 10px; }
+    /* Books spread evenly across the plank rather than left-packed with dead space on the right. */
     .shelf-row {
-      display: flex; align-items: flex-end; gap: 6px;
-      padding: 6px 14px 0 14px;
-      min-height: 200px;
+      display: flex; align-items: flex-end; justify-content: space-evenly; gap: 6px;
+      padding: 8px 20px 0;
+      min-height: 168px;
     }
     .shelf-plank {
       height: 16px;
+      margin: 0 12px;
       background: linear-gradient(180deg, var(--wood-light) 0%, var(--wood-mid) 55%, var(--wood-dark) 100%);
-      box-shadow: 0 6px 8px -2px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.25);
-      border-radius: 2px 2px 5px 5px;
+      box-shadow: 0 8px 12px -3px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.25);
+      border-radius: 2px 2px 6px 6px;
     }
 
     /* ---------- book (shared base) ---------- */
@@ -244,29 +248,20 @@
     .selected-card img { width: 56px; height: 84px; object-fit: cover; border-radius: 3px; box-shadow: 0 2px 4px rgba(0,0,0,.18); flex-shrink: 0; background: var(--paper-shade); }
     .hidden { display: none !important; }
 
-    /* ---------- view switcher (Shelf / Bedside) ---------- */
-    .view-switcher {
-      display: flex; justify-content: center; gap: 6px;
-      padding: 0 16px;
-      margin: 0 0 8px;
+    /* ---------- header right column (icons + view toggle) ---------- */
+    .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 9px; }
+    .header-icons { display: flex; align-items: center; gap: 8px; }
+    .view-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 15px; border-radius: 999px;
+      background: var(--wood-mid); color: var(--paper);
+      font-family: inherit; font-size: 13px; letter-spacing: 0.02em;
+      border: none; cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,.18);
+      transition: background .15s ease, transform .12s ease;
+      white-space: nowrap;
     }
-    .view-tab {
-      background: transparent; border: none;
-      padding: 6px 18px;
-      font-size: 14px; font-family: inherit;
-      color: var(--ink);
-      opacity: 0.45;
-      cursor: pointer;
-      border-radius: 999px;
-      letter-spacing: 0.02em;
-      transition: opacity .15s ease, background .15s ease;
-    }
-    .view-tab:hover { opacity: 0.85; }
-    .view-tab.active {
-      opacity: 1;
-      background: rgba(59,36,24,.10);
-      font-weight: 600;
-    }
+    .view-toggle:active { transform: translateY(1px); }
 
     /* Bedside view — softer dusty wall colour so the switch feels like a different room */
     body[data-view="bedside"] {
@@ -274,7 +269,7 @@
         repeating-linear-gradient(0deg, transparent 0 22px, rgba(89,48,75,.04) 22px 23px),
         linear-gradient(180deg, #f0e4ea, #e6d6dd);
     }
-    body[data-view="bedside"] .view-tab.active { background: rgba(89,48,75,.16); }
+    body[data-view="bedside"] .view-toggle { background: var(--plum-mid); box-shadow: 0 3px 8px rgba(46,27,74,.28); }
 
     /* Hide rating + tag groups in the add modal when the book isn't finished yet
        (adding to bedside, or starting to read — no review until it's done) */
@@ -329,6 +324,16 @@
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .reading-card-since { font-size: 10px; opacity: 0.5; margin-top: auto; font-style: italic; }
+    /* progress bar + page line under a currently-reading card */
+    .reading-progress {
+      margin-top: auto; display: flex; flex-direction: column; gap: 4px; padding-top: 6px;
+    }
+    .reading-bar { height: 7px; border-radius: 999px; background: rgba(59,36,24,.14); overflow: hidden; }
+    .reading-bar > span {
+      display: block; height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, var(--wood-mid), var(--wood-light));
+    }
+    .reading-page { font-size: 10px; opacity: 0.55; font-variant-numeric: tabular-nums; }
     body[data-view="bedside"] .reading-strip { display: none; }
 
     /* ---------- header icon button (stats) ---------- */
@@ -367,62 +372,75 @@
     .month-bar-label { font-size: 9px; opacity: 0.5; }
     .stats-empty { opacity: 0.6; font-size: 14px; text-align: center; padding: 24px 0; }
 
-    /* ---------- shelf controls (sort + author filter) ---------- */
+    /* ---------- shelf controls (sort) ---------- */
     .shelf-controls {
-      display: flex; gap: 16px;
-      padding: 6px 16px 0;
+      padding: 4px 16px 0;
       font-size: 13px;
-      flex-wrap: wrap;
     }
-    .shelf-controls label {
-      display: inline-flex; align-items: center; gap: 5px;
-      cursor: pointer;
+    .sort-control {
+      display: inline-flex; align-items: center; gap: 7px;
+      cursor: pointer; opacity: 0.75;
     }
-    .shelf-controls label span { opacity: 0.6; letter-spacing: 0.02em; }
+    .sort-control svg { width: 14px; height: 14px; opacity: 0.7; }
+    .sort-control span { opacity: 0.7; letter-spacing: 0.02em; }
     .shelf-controls select {
       background: transparent;
       border: none;
-      border-bottom: 1px dashed rgba(59,36,24,.30);
-      padding: 2px 18px 2px 4px;
-      font-family: inherit; font-size: inherit;
+      padding: 2px 18px 2px 2px;
+      font-family: inherit; font-size: inherit; font-weight: 600;
       color: var(--ink);
       cursor: pointer;
       appearance: none;
       -webkit-appearance: none;
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 6'><polyline points='0,0 6,6 12,0' fill='none' stroke='%233b2418' stroke-width='1.5' opacity='0.5'/></svg>");
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 6'><polyline points='0,0 6,6 12,0' fill='none' stroke='%233b2418' stroke-width='1.5' opacity='0.6'/></svg>");
       background-repeat: no-repeat;
       background-position: right 2px center;
       background-size: 10px;
       max-width: 180px;
     }
-    .shelf-controls select:focus { outline: none; border-bottom-color: var(--wood-mid); }
+    .shelf-controls select:focus { outline: none; }
+
+    /* ---------- shelf section labels (group dividers per sort) ---------- */
+    .section-label {
+      display: flex; align-items: center; gap: 12px;
+      max-width: 48rem; margin: 18px auto 0; padding: 0 22px;
+      color: rgba(59,36,24,.55);
+      font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600;
+    }
+    .section-label::before, .section-label::after {
+      content: ""; height: 1px; background: rgba(59,36,24,.16); flex: 1;
+    }
+    body[data-view="bedside"] .section-label { color: rgba(89,48,75,.6); }
+    body[data-view="bedside"] .section-label::before,
+    body[data-view="bedside"] .section-label::after { background: rgba(89,48,75,.18); }
   </style>
 </head>
 <body>
-  <header class="max-w-3xl mx-auto px-4 pt-6 pb-3 flex items-end justify-between">
+  <header class="max-w-3xl mx-auto px-4 pt-6 pb-2 flex items-start justify-between gap-3">
     <div>
       <h1 class="text-3xl font-bold tracking-tight">Bookshelf</h1>
-      <p id="subtitle" class="text-sm opacity-70 italic">finished books look better on a shelf</p>
+      <p id="subtitle" class="text-sm opacity-60 italic">finished books look better on a shelf</p>
     </div>
-    <div class="flex items-center gap-2">
-      <button id="statsBtn" class="icon-btn" type="button" aria-label="Reading stats" title="Reading stats">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="6" y1="20" x2="6" y2="13"></line>
-          <line x1="12" y1="20" x2="12" y2="4"></line>
-          <line x1="18" y1="20" x2="18" y2="9"></line>
-        </svg>
-      </button>
-      <button id="profileBtn" class="profile-chip" type="button">signing in...</button>
+    <div class="header-right">
+      <div class="header-icons">
+        <button id="statsBtn" class="icon-btn" type="button" aria-label="Reading stats" title="Reading stats">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="6" y1="20" x2="6" y2="13"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="18" y1="20" x2="18" y2="9"></line>
+          </svg>
+        </button>
+        <button id="profileBtn" class="profile-chip" type="button">signing in...</button>
+      </div>
+      <button id="viewToggle" class="view-toggle" type="button">Go to Bedside →</button>
     </div>
   </header>
 
-  <nav class="view-switcher max-w-3xl mx-auto" role="tablist" aria-label="Section">
-    <button class="view-tab" data-view="bookshelf" type="button" role="tab" aria-selected="true">Shelf</button>
-    <button class="view-tab" data-view="bedside" type="button" role="tab" aria-selected="false">Bedside</button>
-  </nav>
-
   <div class="shelf-controls max-w-3xl mx-auto">
-    <label>
+    <label class="sort-control">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 5h18l-7 8v6l-4-2v-4z"></path>
+      </svg>
       <span>sort by</span>
       <select id="sortSelect" aria-label="Sort by">
         <option value="completed">most recent</option>
@@ -431,17 +449,11 @@
         <option value="length">length</option>
       </select>
     </label>
-    <label>
-      <span>author</span>
-      <select id="authorFilter" aria-label="Filter by author">
-        <option value="">all</option>
-      </select>
-    </label>
   </div>
 
   <section id="readingStrip" class="reading-strip hidden" aria-label="Currently reading"></section>
 
-  <main id="shelves" class="max-w-3xl mx-auto px-2 pt-4 pb-32 space-y-7"></main>
+  <main id="shelves" class="max-w-3xl mx-auto px-2 pt-2 pb-32"></main>
 
   <button id="addBtn" class="fab" type="button" aria-label="Add a finished book">+</button>
 
@@ -506,6 +518,12 @@
           <button type="button" class="star" data-rating="5" aria-label="5 stars">★</button>
         </div>
         <input type="hidden" id="addRating" value="5" />
+      </div>
+
+      <div class="review-only">
+        <label class="block text-sm opacity-70 mb-1" for="addCompletedDate">Date finished</label>
+        <input type="date" id="addCompletedDate"
+               class="w-full p-2 border rounded bg-[var(--paper)] text-[var(--ink)]" />
       </div>
 
       <!-- Tagged review fields — feed the recommendation engine; hidden when adding to bedside -->
@@ -665,11 +683,8 @@
       activeView = view;
       localStorage.setItem('bookshelf:view', view);
       document.body.dataset.view = view;
-      document.querySelectorAll('.view-tab').forEach(tab => {
-        const isActive = tab.dataset.view === view;
-        tab.classList.toggle('active', isActive);
-        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-      });
+      const toggle = document.getElementById('viewToggle');
+      if (toggle) toggle.textContent = view === 'bedside' ? '← Back to Shelf' : 'Go to Bedside →';
       const subtitleEl = document.getElementById('subtitle');
       if (subtitleEl) subtitleEl.textContent = VIEW_SUBTITLES[view];
       renderShelves();
@@ -678,20 +693,12 @@
     document.body.dataset.view = activeView;
 
     // ---- Sort + filter state (Shelf only) ----
-    let activeSort   = localStorage.getItem('bookshelf:sort')   || 'completed';
-    let activeFilter = localStorage.getItem('bookshelf:filter') || '';
+    let activeSort = localStorage.getItem('bookshelf:sort') || 'completed';
     function setActiveSort(value) {
       activeSort = value;
       localStorage.setItem('bookshelf:sort', value);
       renderShelves();
     }
-    function setActiveFilter(value) {
-      activeFilter = value;
-      localStorage.setItem('bookshelf:filter', value);
-      renderShelves();
-    }
-
-    const MIN_SHELVES = 3;
 
     // Palette for randomised spine generation
     const spineColors = ['#5a2828', '#2d4a2b', '#4a3b6b', '#b06a2c', '#1d3557', '#7a5230', '#3d5a3d'];
@@ -1042,6 +1049,26 @@
       activate('chapterChips', entry.chapterLength);
     }
 
+    // ---- Completion-date input helpers ----
+    function dateToInputValue(d) {
+      const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    // Parse a yyyy-mm-dd value into a local Date at noon (avoids UTC day-shift). Null if blank.
+    function parseDateInput(value) {
+      if (!value) return null;
+      const [y, m, d] = value.split('-').map(Number);
+      if (!y || !m || !d) return null;
+      return new Date(y, m - 1, d, 12, 0, 0);
+    }
+    // Seed the "Date finished" input from a timestamp (or today if none), capped at today.
+    function setCompletedDateInput(ts) {
+      const input = document.getElementById('addCompletedDate');
+      const ms = tsMillis(ts);
+      input.value = dateToInputValue(ms ? new Date(ms) : new Date());
+      input.max = dateToInputValue(new Date());
+    }
+
     function resetAddForm() {
       selectedBook = null;
       lastQuery = '';
@@ -1056,6 +1083,7 @@
       document.getElementById('addTitle').value = '';
       document.getElementById('addAuthor').value = '';
       setRating(5);
+      setCompletedDateInput(null);
       document.getElementById('addNotes').value = '';
       clearAllChips();
     }
@@ -1077,6 +1105,7 @@
       modal.removeAttribute('data-editing'); // not in edit mode for the normal add flow
       document.getElementById('addTitleLabel').textContent = LABELS[mode].title;
       document.getElementById('saveBookBtn').textContent   = LABELS[mode].save;
+      setCompletedDateInput(null); // defaults to today; only visible/used for finished adds
       modal.showModal();
       // small delay so dialog finishes opening before focus
       setTimeout(() => document.getElementById('bookSearch').focus(), 50);
@@ -1106,8 +1135,10 @@
       document.getElementById('selectedAuthor').textContent = b.author;
       document.getElementById('changeSelection').style.display = 'none';
 
-      // Pre-fill rating + notes from whatever's saved
+      // Pre-fill rating + date + notes from whatever's saved (date falls back to today when
+      // converting a bedside/reading book that was never finished before).
       setRating((b.rating != null) ? b.rating : 5);
+      setCompletedDateInput(b.completedAt);
       document.getElementById('addNotes').value  = b.notes || '';
 
       // Pre-select chips matching saved tags. CSS.escape handles values with slashes/spaces safely.
@@ -1392,17 +1423,22 @@
       // don't store a phantom 5-star rating on a book that hasn't been read.
       const rating = isFinished ? parseInt(document.getElementById('addRating').value, 10) : null;
       const notes  = document.getElementById('addNotes').value;
+      // User-chosen finish date (review forms only). A Date is stored directly; Firestore turns it
+      // into a Timestamp. Falls back to "now" when finishing for the first time with no date given.
+      const completedDate = isFinished ? parseDateInput(document.getElementById('addCompletedDate').value) : null;
 
       try {
         if (editingId) {
-          // Editing existing — review fields only. Converting bedside/reading → shelf stamps completedAt.
+          // Editing existing — review fields only. Always (re)set completedAt from the chosen date so
+          // backdated books land in the right month; fall back to now if it's the first finish.
           const editingBook = books.find(b => b.id === editingId);
           const wasUnfinished = editingBook && (editingBook.status || 'finished') !== 'finished';
           const update = {
             rating, notes, status: 'finished',
             genres, pace, tone, lengthFelt, chapterLength,
           };
-          if (wasUnfinished) update.completedAt = serverTimestamp();
+          if (completedDate)      update.completedAt = completedDate;
+          else if (wasUnfinished) update.completedAt = serverTimestamp();
           await updateDoc(doc(db, `users/${currentUser.uid}/books`, editingId), update);
         } else {
           const colorIdx = Math.floor(Math.random() * spineColors.length);
@@ -1420,7 +1456,8 @@
             width:  Math.floor(Math.random() * (46  - 30  + 1)) + 30,  // 30-46px
             createdAt: serverTimestamp(),
             startedAt:   status === 'reading'  ? serverTimestamp() : null,
-            completedAt: isFinished ? serverTimestamp() : null,
+            currentPage: status === 'reading'  ? 0 : null,
+            completedAt: isFinished ? (completedDate || serverTimestamp()) : null,
           });
         }
         document.getElementById('addModal').close();
@@ -1494,68 +1531,52 @@
       if (typeof ts.seconds === 'number') return ts.seconds * 1000;
       return 0;
     }
-    function sortBooks(arr, sortKey) {
-      const out = [...arr];
-      if (sortKey === 'author') {
-        out.sort((a, b) => (a.author || '').localeCompare(b.author || '', undefined, { sensitivity: 'base' }));
-      } else if (sortKey === 'genre') {
-        // Sort by primary genre (first tag) alphabetically. No-genre books go to the end.
-        out.sort((a, b) => {
-          const ag = (a.genres && a.genres[0]) || '';
-          const bg = (b.genres && b.genres[0]) || '';
-          if (!ag && !bg) return 0;
-          if (!ag) return 1;
-          if (!bg) return -1;
-          return ag.localeCompare(bg, undefined, { sensitivity: 'base' });
-        });
-      } else if (sortKey === 'length') {
-        out.sort((a, b) => {
-          const ap = a.pageCount || null;
-          const bp = b.pageCount || null;
-          if (ap == null && bp == null) return 0;
-          if (ap == null) return 1;   // unknown lengths go to the end
-          if (bp == null) return -1;
-          return ap - bp;             // shortest first
-        });
-      } else {
-        // 'completed' (default) — most recently finished first.
-        // completedAt is stamped when status becomes 'finished'; fall back to createdAt for older books.
-        out.sort((a, b) => tsMillis(b.completedAt || b.createdAt) - tsMillis(a.completedAt || a.createdAt));
-      }
-      return out;
-    }
+    // Group books into labelled sections that depend on the active sort. Returns an ordered array
+    // of { label, books } — each section becomes a divider + one or more shelves. The chosen sort
+    // decides the grouping (months / authors / genres / page-bands) and the order within.
+    const recencyMs = b => tsMillis(b.completedAt || b.createdAt);
+    function buildSections(list, sortKey) {
+      const sections = new Map(); // key -> { label, ord, books }
+      const add = (key, label, ord, b) => {
+        if (!sections.has(key)) sections.set(key, { label, ord, books: [] });
+        sections.get(key).books.push(b);
+      };
 
-    // Rebuild the author dropdown to reflect the books currently on the active profile's shelf.
-    // Preserves the current selection if still valid; clears the filter silently if not.
-    let lastAuthorSig = null; // skip rebuilding the dropdown on pure resize re-renders
-    function populateAuthorFilter() {
-      const select = document.getElementById('authorFilter');
-      // Use whichever view we're currently on — bedside dropdown shows bedside authors, etc.
-      const expectedStatus = activeView === 'bedside' ? 'bedside' : 'finished';
-      const viewBooks = books.filter(b =>
-        (b.profile || 'anthony') === activeProfile &&
-        (b.status  || 'finished') === expectedStatus
-      );
-      const authors = [...new Set(viewBooks.map(b => b.author).filter(Boolean))]
-        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-      // Only touch the DOM when the option set actually changed (view/profile/authors).
-      const sig = `${activeView}|${activeProfile}|${authors.join('')}`;
-      if (sig !== lastAuthorSig) {
-        lastAuthorSig = sig;
-        const options = ['<option value="">all</option>']
-          .concat(authors.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`));
-        select.innerHTML = options.join('');
-      }
-      if (activeFilter && authors.includes(activeFilter)) {
-        select.value = activeFilter;
-      } else {
-        select.value = '';
-        if (activeFilter) {
-          // Saved filter doesn't apply in the current view — clear it silently.
-          activeFilter = '';
-          localStorage.setItem('bookshelf:filter', '');
+      for (const b of list) {
+        if (sortKey === 'author') {
+          const a = (b.author || '').trim() || 'Unknown author';
+          add('a:' + a.toLowerCase(), a, a.toLowerCase(), b);
+        } else if (sortKey === 'genre') {
+          const g = (b.genres && b.genres[0]) || '';
+          // '~' sorts after letters, so untagged lands last.
+          add('g:' + (g || '~'), g || 'Untagged', (g || '~~~').toLowerCase(), b);
+        } else if (sortKey === 'length') {
+          const pc = b.pageCount;
+          if (pc == null) { add('len:none', 'Unknown length', Infinity, b); }
+          else {
+            const band = Math.floor(pc / 100);
+            const label = band === 0 ? 'Under 100 pages' : `${band * 100}\u2013${band * 100 + 99} pages`;
+            add('len:' + band, label, band, b);
+          }
+        } else { // 'completed' — group by finish month, newest first
+          const ms = recencyMs(b);
+          if (!ms) { add('m:none', 'Undated', Infinity, b); }
+          else {
+            const d = new Date(ms);
+            const label = d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+            add('m:' + d.getFullYear() + '-' + d.getMonth(), label, -(d.getFullYear() * 12 + d.getMonth()), b);
+          }
         }
       }
+
+      const arr = [...sections.values()];
+      const isText = (sortKey === 'author' || sortKey === 'genre');
+      arr.sort((a, b) => isText ? String(a.ord).localeCompare(String(b.ord)) : (a.ord - b.ord));
+      for (const sec of arr) {
+        if (sortKey === 'length') sec.books.sort((x, y) => (x.pageCount || 0) - (y.pageCount || 0));
+        else sec.books.sort((x, y) => recencyMs(y) - recencyMs(x));
+      }
+      return arr;
     }
 
     // How wide a book renders on the shelf — must match what makeBookEl actually sets.
@@ -1628,12 +1649,22 @@
         const coverHtml = b.cover
           ? `<img src="${escapeHtml(b.cover)}" class="reading-card-cover" alt="">`
           : `<span class="reading-card-cover-fallback" style="background:${escapeHtml(b.spine || '#4a3b6b')}"></span>`;
+        // With a known page count, show a progress bar + page line; otherwise fall back to "started …".
+        const pc = b.pageCount || 0;
+        const cur = b.currentPage || 0;
+        const pct = pc ? Math.min(100, Math.round(cur / pc * 100)) : 0;
+        const footHtml = pc
+          ? `<span class="reading-progress">
+               <span class="reading-bar"><span style="width:${pct}%"></span></span>
+               <span class="reading-page">${cur ? `page ${cur} of ${pc} · tap to update` : `${pc} pages · tap to set your page`}</span>
+             </span>`
+          : `<span class="reading-card-since">${escapeHtml(relativeSince(b.startedAt))}</span>`;
         card.innerHTML = `
           ${coverHtml}
           <span class="reading-card-meta">
             <span class="reading-card-title">${escapeHtml(b.title)}</span>
             <span class="reading-card-author">${escapeHtml(b.author)}</span>
-            <span class="reading-card-since">${escapeHtml(relativeSince(b.startedAt))}</span>
+            ${footHtml}
           </span>`;
         card.addEventListener('click', () => openBook(b));
         row.appendChild(card);
@@ -1657,6 +1688,42 @@
       strip.appendChild(row);
     }
 
+    // Build one shelf <section> (a row of items + its plank) from a packed row of items.
+    function buildShelfEl(rowItems) {
+      const shelf = document.createElement('section');
+      shelf.className = 'shelf';
+      const list = document.createElement('div');
+      list.className = 'shelf-row';
+      rowItems.forEach(item => {
+        if (item.isSlot) {
+          const slot = document.createElement('button');
+          slot.type = 'button';
+          slot.className = 'empty-slot';
+          slot.setAttribute('aria-label', 'Add a book');
+          slot.textContent = '+';
+          slot.addEventListener('click', () => openAddModal());
+          list.appendChild(slot);
+        } else if (item.isMystery) {
+          const myst = document.createElement('button');
+          myst.type = 'button';
+          myst.className = 'book book-mystery';
+          myst.style.width = item.width + 'px';
+          myst.style.minHeight = item.height + 'px';
+          myst.setAttribute('aria-label', 'A mystery recommendation');
+          myst.textContent = '?';
+          myst.addEventListener('click', openMysteryRecommendation);
+          list.appendChild(myst);
+        } else {
+          list.appendChild(makeBookEl(item));
+        }
+      });
+      const plank = document.createElement('div');
+      plank.className = 'shelf-plank';
+      shelf.appendChild(list);
+      shelf.appendChild(plank);
+      return shelf;
+    }
+
     function renderShelves() {
       renderReadingStrip();
       const root = document.getElementById('shelves');
@@ -1665,64 +1732,35 @@
       // Filter by active profile AND active view.
       // Legacy: books without a profile default to 'anthony'; books without a status default to 'finished' (on the Shelf).
       const expectedStatus = activeView === 'bedside' ? 'bedside' : 'finished';
-      let visibleBooks = books.filter(b =>
+      const visibleBooks = books.filter(b =>
         (b.profile || 'anthony') === activeProfile &&
         (b.status  || 'finished') === expectedStatus
       );
 
-      // Apply sort + filter to whichever view we're on (controls visible for both now).
-      populateAuthorFilter();
-      if (activeFilter) visibleBooks = visibleBooks.filter(b => b.author === activeFilter);
-      visibleBooks = sortBooks(visibleBooks, activeSort);
-
-      // On the Bedside, prepend the mystery "?" tile. Always append the "+" empty slot.
-      const items = activeView === 'bedside'
-        ? [MYSTERY_ITEM, ...visibleBooks, SLOT_ITEM]
-        : [...visibleBooks, SLOT_ITEM];
       const containerWidth = root.clientWidth || 460;
-      const rows = packIntoRows(items, containerWidth);
 
-      // Always show at least MIN_SHELVES rows so the bookcase doesn't look bare.
-      while (rows.length < MIN_SHELVES) rows.push([]);
+      // Bedside keeps the mystery "?" tile pinned on its own shelf at the very top.
+      if (activeView === 'bedside') {
+        root.appendChild(buildShelfEl([MYSTERY_ITEM]));
+      }
 
-      rows.forEach((row, idx) => {
-        const shelf = document.createElement('section');
-        shelf.className = 'shelf';
-        shelf.setAttribute('aria-label', `Shelf ${idx + 1}`);
+      const sections = buildSections(visibleBooks, activeSort);
 
-        const list = document.createElement('div');
-        list.className = 'shelf-row';
+      if (sections.length === 0) {
+        // Nothing here yet — show a single shelf with just the "+" so it's not blank.
+        root.appendChild(buildShelfEl([SLOT_ITEM]));
+        return;
+      }
 
-        row.forEach(item => {
-          if (item.isSlot) {
-            const slot = document.createElement('button');
-            slot.type = 'button';
-            slot.className = 'empty-slot';
-            slot.setAttribute('aria-label', 'Add a finished book');
-            slot.textContent = '+';
-            slot.addEventListener('click', openAddModal);
-            list.appendChild(slot);
-          } else if (item.isMystery) {
-            const myst = document.createElement('button');
-            myst.type = 'button';
-            myst.className = 'book book-mystery';
-            myst.style.width = item.width + 'px';
-            myst.style.minHeight = item.height + 'px';
-            myst.setAttribute('aria-label', 'A mystery recommendation');
-            myst.textContent = '?';
-            myst.addEventListener('click', openMysteryRecommendation);
-            list.appendChild(myst);
-          } else {
-            list.appendChild(makeBookEl(item));
-          }
-        });
+      sections.forEach((sec, si) => {
+        const label = document.createElement('div');
+        label.className = 'section-label';
+        label.textContent = sec.label;
+        root.appendChild(label);
 
-        const plank = document.createElement('div');
-        plank.className = 'shelf-plank';
-
-        shelf.appendChild(list);
-        shelf.appendChild(plank);
-        root.appendChild(shelf);
+        // Append the "+" slot only after the very last section's books.
+        const items = (si === sections.length - 1) ? [...sec.books, SLOT_ITEM] : [...sec.books];
+        packIntoRows(items, containerWidth).forEach(row => root.appendChild(buildShelfEl(row)));
       });
     }
 
@@ -1761,6 +1799,7 @@
       await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), {
         status: 'reading',
         startedAt: serverTimestamp(),
+        currentPage: b.currentPage || 0,
       });
     }
     async function moveToBedside(b) {
@@ -1768,6 +1807,7 @@
       await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), {
         status: 'bedside',
         startedAt: null,
+        currentPage: null,
       });
     }
 
@@ -1798,10 +1838,27 @@
       // Stars for finished books; a status line for unfinished ones.
       let statusBlock;
       if (isFinished) {
-        statusBlock = `<p class="stars text-lg mb-1" aria-label="rating ${b.rating || 0} of 5">${stars(b.rating || 0)}</p>`;
+        const finMs = tsMillis(b.completedAt || b.createdAt);
+        const finStr = finMs
+          ? new Date(finMs).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+          : '';
+        const finLine = finStr ? `<p class="text-xs opacity-50 mb-2">finished ${escapeHtml(finStr)}</p>` : '';
+        statusBlock = `<p class="stars text-lg mb-1" aria-label="rating ${b.rating || 0} of 5">${stars(b.rating || 0)}</p>${finLine}`;
       } else if (isReading) {
         const since = relativeSince(b.startedAt);
-        statusBlock = `<p class="text-xs italic opacity-60 mb-2">— currently reading${since ? ' · ' + escapeHtml(since) : ''} —</p>`;
+        const pc = b.pageCount || 0;
+        const cur = b.currentPage || 0;
+        const pct = pc ? Math.min(100, Math.round(cur / pc * 100)) : 0;
+        const barHtml = pc ? `<div class="reading-bar" style="margin:8px 0 6px"><span style="width:${pct}%"></span></div>` : '';
+        statusBlock = `
+          <p class="text-xs italic opacity-60 mb-1">— currently reading${since ? ' · ' + escapeHtml(since) : ''} —</p>
+          ${barHtml}
+          <div class="flex items-center gap-2 text-sm mb-1">
+            <label class="opacity-70" for="readingPageInput">page</label>
+            <input type="number" id="readingPageInput" min="0" ${pc ? `max="${pc}"` : ''} value="${cur || ''}" placeholder="0"
+                   class="w-20 p-1 border rounded bg-[var(--paper)] text-[var(--ink)]" />
+            <span class="opacity-60">${pc ? `of ${pc}` : 'pages'}</span>
+          </div>`;
       } else {
         statusBlock = `<p class="text-xs italic opacity-60 mb-2">— on your bedside —</p>`;
       }
@@ -1877,6 +1934,14 @@
           await moveToBedside(b);
           dlg.close();
         });
+        // Update current page (clamped to the book's length). Saves on change; the strip re-renders.
+        const pageInput = document.getElementById('readingPageInput');
+        pageInput.addEventListener('change', async () => {
+          let v = parseInt(pageInput.value, 10);
+          if (isNaN(v) || v < 0) v = 0;
+          if (b.pageCount && v > b.pageCount) { v = b.pageCount; pageInput.value = String(v); }
+          await updateDoc(doc(db, `users/${currentUser.uid}/books`, b.id), { currentPage: v });
+        });
       } else {
         document.getElementById('editBookBtn').addEventListener('click', () => {
           dlg.close();
@@ -1895,17 +1960,17 @@
       setActiveProfile(activeProfile === 'anthony' ? 'amy' : 'anthony');
     });
 
-    // View tabs — tap to swap between Shelf (finished) and Bedside (to-read).
-    document.querySelectorAll('.view-tab').forEach(tab => {
-      tab.addEventListener('click', () => setActiveView(tab.dataset.view));
+    // View toggle — one button that swaps between Shelf and Bedside (the wall colour tells you
+    // which one you're on, so the label points where you'd go next).
+    document.getElementById('viewToggle').addEventListener('click', () => {
+      setActiveView(activeView === 'bedside' ? 'bookshelf' : 'bedside');
     });
-    // Initial activation: marks the right tab .active and writes the right subtitle.
+    // Initial activation: sets the toggle label + subtitle and paints the view.
     setActiveView(activeView);
 
-    // Sort + filter selects — sync to saved values, then wire change handlers.
+    // Sort select — syncs to saved value, then wires the change handler.
     document.getElementById('sortSelect').value = activeSort;
     document.getElementById('sortSelect').addEventListener('change', e => setActiveSort(e.target.value));
-    document.getElementById('authorFilter').addEventListener('change', e => setActiveFilter(e.target.value));
 
     // ---- Stats ----
     // All derived live from the active profile's finished books. completedAt falls back to createdAt
@@ -2061,6 +2126,7 @@
             pageCount: raw.pageCount || null,
             publishedDate: raw.publishedDate || null,
             status: raw.status || 'finished',
+            currentPage: raw.currentPage ?? null,
             profile,
             detailsAttempted: raw.detailsAttempted ?? true,
             fromRecommendation: raw.fromRecommendation || false,
