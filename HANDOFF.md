@@ -5,8 +5,8 @@ collaborator_profile: Amy (girlfriend — second local profile)
 deploy_url: https://anthonygeo3.github.io/Bookshelf/
 repo_path: G:\Coding\Bookshelf\Bookshelf\
 status: v1 feature-complete
-last_updated: 2026-05-28
-cache_name: bookshelf-v20
+last_updated: 2026-05-29
+cache_name: bookshelf-v25
 firebase_project: bookshelf-anthony
 files:
   - index.html
@@ -281,6 +281,31 @@ Hard rules, no exceptions:
 - Sort by chapter length (would be a 4th sort option, ordered Short → Medium → Long)
 - Factor pageCount + chapterLength preferences into the mystery recommendation scoring
 - `restore.mjs` companion to the backup script for bulk programmatic restore into Firestore
+
+## 12.5 Changelog — v20 → v25 (2026-05-28 → 05-29)
+
+Cache versions map 1:1 to shipped batches. All on branch `claude/handoff-file-review-TJoEK`.
+
+- **v20 — Major feature pass** *(PR #1)*
+  - Currently-reading status (`reading`) — strip atop the Shelf; bedside → reading → finished, `startedAt` stamped.
+  - Stats modal (header chart icon): totals, finished-this-year, pages read, avg rating, avg pages/book, avg days-to-finish, finished-per-month + top-genre bars. Pure CSS.
+  - In-app backup: one-tap JSON Export/Import in the Stats modal (dedupes by title/author/profile; ISO timestamps).
+  - Server-side backup: `tools/backup/` Node + Admin SDK cron script → timestamped JSON, with README.
+  - Recommendation pool grown ~50 → ~90 (hand-tagged modern bestsellers).
+  - Auto-tagging: pool-matched adds pre-fill genre/tone/pace/chapter chips (Google categories back up genre); overridable.
+  - Fixes: "rated null of 5" a11y label; spine-out min width; author-filter rebuild memoised; bedside/reading no longer store phantom 5-star.
+- **v21 — Editable finish date**
+  - "Date finished" field in the add/edit review form (defaults today, capped today). Drives most-recent sort + stats. Detail shows "finished <date>".
+- **v22 — Visual redesign** *(PR #2)*
+  - Condensed header; single view-toggle button replaces the two tabs (wall colour signals the view).
+  - Sort = labelled sections via `buildSections`: months / authors / genres / 100-page bands. Separate author-filter dropdown removed.
+  - Books spread evenly across the plank; rows tightened; mystery "?" tile pinned to its own shelf atop Bedside.
+  - Currently-reading card gains a progress bar; `currentPage` field + setter in the reading detail.
+- **v23 — Mystery-book tags fix** *(PR #3)* — mystery-added books inherit the pool's genres/tone/pace/chapter (no longer "Untagged").
+- **v24 — Total pages for reading books** *(PR #3)* — editable "of N pages" total in the reading detail (Google omits page count for some editions); live bar update.
+- **v25 — Editable Pages field** *(PR #4)* — Pages field in the add/edit review form to correct wrong Google counts; feeds length bands + page stats.
+
+> Verification note: this range was checked via JS syntax checks + real-CSS render previews, not a live Firebase run (not reachable from the dev sandbox) — Anthony was the live tester.
 
 ## 13. Quick onboarding checklist (first interaction in a future session)
 
