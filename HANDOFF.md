@@ -5,8 +5,8 @@ collaborator_profile: Amy (girlfriend — second local profile)
 deploy_url: https://anthonygeo3.github.io/Bookshelf/
 repo_path: G:\Coding\Bookshelf\Bookshelf\
 status: v1 feature-complete
-last_updated: 2026-05-28
-cache_name: bookshelf-v20
+last_updated: 2026-06-09
+cache_name: bookshelf-v26
 firebase_project: bookshelf-anthony
 files:
   - index.html
@@ -86,6 +86,8 @@ Search for these strings to locate functionality fast:
 | Profile swap | `function setActiveProfile` |
 | View swap (Shelf/Bedside) | `function setActiveView` |
 | Currently-reading strip | `function renderReadingStrip`, `function startReading`, `function moveToBedside` |
+| Shelf grouping into sections | `function buildSections` (months/authors/genres/page-bands per sort), `function buildShelfEl` |
+| View toggle (Shelf ↔ Bedside) | `id="viewToggle"`, `function setActiveView` |
 | Stats modal | `function computeStats`, `function renderStats` |
 | Backup export/import | `function exportBackup`, `async function importBackup` |
 | Auto-tag from pool | `function findInPool`, `function prefillChipsFromPool` |
@@ -95,7 +97,7 @@ Search for these strings to locate functionality fast:
 - **Project:** `bookshelf-anthony`
 - **Auth:** Anonymous sign-in only, runs silently. No login UI exists. Each device has its own anonymous UID.
 - **Firestore:** Production mode.
-- **Security rules:** `match /users/{userId}/{document=**}` with `allow read, write: if request.auth != null && request.auth.uid == userId;` — locks each user's tree to themselves.
+- **Security rules (v26+):** two blocks. `match /households/{hid}/{document=**}` with `allow read, write: if request.auth != null;` — the live shared shelf, open to any authenticated (anonymous) device. Plus the legacy `match /users/{userId}/{document=**}` per-UID rule kept so the one-shot migration can still read old data. The legacy block can be removed once both phones have migrated.
 - **apiKey:** `AIzaSyAHMaWQRXsAglvgPxsAfR0tmTNzSo67-Y4` — public, this is normal for client-side Firebase.
 
 ## 5. Google Books API
@@ -127,7 +129,8 @@ Search for these strings to locate functionality fast:
 | `profile` | "anthony" \| "amy" | Which profile owns this book |
 | `createdAt` | Timestamp | Server timestamp on add |
 | `startedAt` | Timestamp \| null | Stamped when status becomes 'reading'. Null otherwise. Used for the "reading for N days" label + avg-days-to-finish stat. |
-| `completedAt` | Timestamp \| null | Stamped when status becomes 'finished' (from any prior state). Null for bedside/reading. Falls back to `createdAt` in sort for old books. |
+| `currentPage` | number \| null | Page you're on while `status === 'reading'`. Drives the reading-card progress bar. Set via the reading detail modal. Null otherwise. |
+| `completedAt` | Timestamp \| null | Finish date. Defaults to "now" when a book becomes 'finished', but is **user-editable** via the "Date finished" field in the add/edit review form (so backlog books can be backdated). Null for bedside/reading. Falls back to `createdAt` in sort/stats for old books. |
 | `spine` | string (hex) | Random colour for spine fallback view |
 | `ink` | string (hex) | Random text colour for spine |
 | `height` | number (140–190) | Random per-book height in px |
@@ -151,7 +154,7 @@ Search for these strings to locate functionality fast:
 - **Shelf** (default, cream wall) — finished books
 - **Bedside** (dusty-pink wall) — books planned to read, has a mystery "?" tile at the start
 - Switched via tabs below the header. Persisted in `localStorage['bookshelf:view']`.
-- Each device has its own anonymous Firebase UID. Profile swap (Anthony ↔ Amy) is local to that UID — books are partitioned by `profile` field within the same Firestore tree.
+- **v26+:** all devices share one collection — `households/main/books` (same pattern as A-to-A-Walking). Anonymous auth remains, but the UID is no longer part of the data path; it's only the security-rules gate. Profile swap (Anthony ↔ Amy) switches which `profile`'s books you're *viewing* — both shelves are now identical on every device. A one-shot `migrateLegacyBooks` copies each device's old per-UID books up on first load (same doc IDs = idempotent; never overwrites; originals left in place).
 
 ### Add book flow
 1. Tap **+** FAB or the empty-slot "+" in a shelf row → `openAddModal` opens the modal
@@ -183,11 +186,18 @@ Search for these strings to locate functionality fast:
 4. `updateDoc` flips status to 'finished' AND stamps `completedAt = serverTimestamp()`
 5. Book disappears from bedside, appears on shelf
 
-### Sort + filter (both views)
-- Sort options: Most recent / Author / Genre / Length
-- Filter: by author (dropdown populated from current view's books)
-- Shared state across views — both stored in localStorage. If a filter doesn't apply when switching views, it's silently cleared.
-- Bedside also gets these controls now (added 2026-05-22).
+### Sort = grouped sections (both views) — redesigned 2026-05-29
+- One `sort by` control (funnel). Picking a sort **groups the shelves into labelled sections** via `buildSections`:
+  - **most recent** → month sections ("May 2026"), newest first
+  - **author** → author sections, alphabetical
+  - **genre** → primary-genre sections (untagged last)
+  - **length** → 100-page bands ("Under 100 pages", "100–199 pages", … unknown last)
+- The old separate **author filter dropdown was removed** — author *grouping* replaces it.
+- Sort choice stored in `localStorage['bookshelf:sort']`. Applies to both views.
+
+### Header + navigation — redesigned 2026-05-29
+- Condensed header: title + subtitle left; `stats` + `profile` icons top-right; a single **view-toggle button** beneath them ("Go to Bedside →" / "← Back to Shelf"). The old two-tab `.view-switcher` is gone; the purple wall tells you you're on Bedside.
+- Books render **spread evenly across the plank** (`justify-content: space-evenly`), rows tighter together. The mystery "?" tile sits on its own pinned shelf at the top of Bedside.
 
 ### Backfill (one-shot per session)
 - After auth resolves and books load, `backfillMissingDetails` runs once
@@ -227,7 +237,7 @@ Search for these strings to locate functionality fast:
 These have been explicitly rejected or scoped out. Adding them would be a regression of intent.
 
 - ❌ **Difficulty rating** — Anthony rejected on 2026-05-22. No standardised reading-level source (Lexile is paywalled, Flesch-Kincaid needs full text we don't have). Guesses didn't add value.
-- ❌ **Cross-device sync / login UX** — explicit reject. Anthony: "I dislike how you have to login to every website these days." Each device is its own world. **Note:** backup/restore now exists (in-app JSON export/import + server-side cron pull) — that is *not* login/sync, just data safety, and was explicitly wanted.
+- ⚠️ **Login UX** — still rejected ("I dislike how you have to login to every website these days"). **But cross-device sync now exists (v26, 2026-06-09)** via a shared no-login Firestore path, after Amy added her first book and couldn't see Anthony's shelf. Don't suggest accounts/login; the shared-path model is the accepted solution. **Note:** backup/restore now exists (in-app JSON export/import + server-side cron pull) — that is *not* login/sync, just data safety, and was explicitly wanted.
 - ❌ **Editing book title/author** — only review fields are editable. Wrong-book = delete + re-add.
 - ❌ **Per-view sort/filter state** — shared between views for now. Easy to split if asked.
 - ✅ ~~**Currently-reading status**~~ — **now built (2026-05-28).** Third status "reading", surfaced as a highlighted strip at the top of the Shelf. bedside → reading → finished, with `startedAt`/`completedAt` stamping.
@@ -271,6 +281,37 @@ Hard rules, no exceptions:
 - Sort by chapter length (would be a 4th sort option, ordered Short → Medium → Long)
 - Factor pageCount + chapterLength preferences into the mystery recommendation scoring
 - `restore.mjs` companion to the backup script for bulk programmatic restore into Firestore
+
+## 12.5 Changelog — v20 → v25 (2026-05-28 → 05-29)
+
+Cache versions map 1:1 to shipped batches. All on branch `claude/handoff-file-review-TJoEK`.
+
+- **v20 — Major feature pass** *(PR #1)*
+  - Currently-reading status (`reading`) — strip atop the Shelf; bedside → reading → finished, `startedAt` stamped.
+  - Stats modal (header chart icon): totals, finished-this-year, pages read, avg rating, avg pages/book, avg days-to-finish, finished-per-month + top-genre bars. Pure CSS.
+  - In-app backup: one-tap JSON Export/Import in the Stats modal (dedupes by title/author/profile; ISO timestamps).
+  - Server-side backup: `tools/backup/` Node + Admin SDK cron script → timestamped JSON, with README.
+  - Recommendation pool grown ~50 → ~90 (hand-tagged modern bestsellers).
+  - Auto-tagging: pool-matched adds pre-fill genre/tone/pace/chapter chips (Google categories back up genre); overridable.
+  - Fixes: "rated null of 5" a11y label; spine-out min width; author-filter rebuild memoised; bedside/reading no longer store phantom 5-star.
+- **v21 — Editable finish date**
+  - "Date finished" field in the add/edit review form (defaults today, capped today). Drives most-recent sort + stats. Detail shows "finished <date>".
+- **v22 — Visual redesign** *(PR #2)*
+  - Condensed header; single view-toggle button replaces the two tabs (wall colour signals the view).
+  - Sort = labelled sections via `buildSections`: months / authors / genres / 100-page bands. Separate author-filter dropdown removed.
+  - Books spread evenly across the plank; rows tightened; mystery "?" tile pinned to its own shelf atop Bedside.
+  - Currently-reading card gains a progress bar; `currentPage` field + setter in the reading detail.
+- **v23 — Mystery-book tags fix** *(PR #3)* — mystery-added books inherit the pool's genres/tone/pace/chapter (no longer "Untagged").
+- **v24 — Total pages for reading books** *(PR #3)* — editable "of N pages" total in the reading detail (Google omits page count for some editions); live bar update.
+- **v25 — Editable Pages field** *(PR #4)* — Pages field in the add/edit review form to correct wrong Google counts; feeds length bands + page stats.
+
+- **v26 — Shared shelf across devices** *(2026-06-09)*
+  - Data path moved `users/{uid}/books` → `households/main/books` (constant `BOOKS_PATH`). Mirrors the A-to-A-Walking public-path pattern.
+  - `migrateLegacyBooks`: one-shot per device, copies legacy per-UID books to the shared collection with the same doc IDs (idempotent, never overwrites), `localStorage['bookshelf:migrated:{uid}']` guard. Legacy data left untouched.
+  - Requires the rules update in §4 (households block added, legacy users block retained during transition).
+  - Consequence: edits/deletes are shared — either person can modify either profile's books.
+
+> Verification note: this range was checked via JS syntax checks + real-CSS render previews, not a live Firebase run (not reachable from the dev sandbox) — Anthony was the live tester.
 
 ## 13. Quick onboarding checklist (first interaction in a future session)
 
