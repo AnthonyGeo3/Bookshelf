@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bookshelf — mockup: Bedside</title>
+<style>
+  :root{
+    --paper:#f0e4ea; --paper-shade:#e6d6dd; --ink:#3b2418;
+    --wood-light:#6b4226; --wood-mid:#4a2c1a; --wood-dark:#2e1c10;
+    --plum-mid:#4a3b6b; --plum-deep:#2e1b4a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:#d3c7cf; font-family:ui-serif,Georgia,"Times New Roman",serif; color:var(--ink);
+       display:flex; justify-content:center; padding:24px 0; min-height:100vh;}
+  .phone{width:412px; min-height:860px; background:
+        repeating-linear-gradient(0deg, transparent 0 26px, rgba(89,48,75,.03) 26px 27px),
+        linear-gradient(180deg, var(--paper), var(--paper-shade));
+        border-radius:34px; box-shadow:0 24px 60px rgba(0,0,0,.28); overflow:hidden; position:relative;}
+  h1{font-family:ui-serif,"Iowan Old Style",Georgia,serif; margin:0;}
+
+  .top{display:flex; justify-content:space-between; align-items:flex-start; padding:22px 18px 8px;}
+  .brand h1{font-size:27px; font-weight:700; letter-spacing:-.01em;}
+  .brand p{font-size:12px; font-style:italic; opacity:.55; margin-top:2px;}
+  .top-right{display:flex; flex-direction:column; align-items:flex-end; gap:9px;}
+  .icons{display:flex; gap:8px;}
+  .icon-btn{width:36px; height:36px; border-radius:999px; border:1px solid rgba(89,48,75,.22);
+            background:rgba(89,48,75,.08); display:flex; align-items:center; justify-content:center; color:#5a3a52;}
+  .icon-btn svg{width:18px;height:18px}
+  /* toggle picks up the plum accent on bedside */
+  .toggle{display:inline-flex; align-items:center; gap:6px; padding:7px 15px; border-radius:999px;
+          background:var(--plum-mid); color:#f4ecf6; font-size:13px; letter-spacing:.02em; border:none; cursor:pointer;
+          box-shadow:0 3px 8px rgba(46,27,74,.28);}
+
+  .controls{padding:6px 18px 2px;}
+  .sort{display:inline-flex; align-items:center; gap:7px; font-size:13px; opacity:.7; cursor:pointer;}
+  .sort svg{width:14px;height:14px}
+  .sort b{font-weight:600; opacity:.95}
+
+  /* discovery tile pinned at top of bedside */
+  .discover{padding:12px 18px 2px;}
+  .mystery{display:flex; align-items:center; gap:13px; padding:13px; border-radius:13px;
+           background:linear-gradient(135deg,var(--plum-deep),var(--plum-mid) 55%,#6b4a8d);
+           color:#f4ecf6; box-shadow:0 6px 16px rgba(46,27,74,.30);}
+  .qmark{width:46px; height:60px; border-radius:5px; background:rgba(255,255,255,.12); display:flex;
+         align-items:center; justify-content:center; font-size:30px; font-weight:700;}
+  .mystery .mt{font-weight:700; font-size:14px;}
+  .mystery .ms{font-size:11px; opacity:.8; margin-top:2px;}
+
+  .author{display:flex; align-items:center; gap:12px; margin:20px 18px 0; color:rgba(89,48,75,.6);
+          font-size:11px; letter-spacing:.08em; text-transform:uppercase; font-weight:600;}
+  .author::before,.author::after{content:""; height:1px; background:rgba(89,48,75,.18); flex:1;}
+
+  .shelf{padding-bottom:10px;}
+  .shelf-row{display:flex; align-items:flex-end; justify-content:space-evenly; padding:8px 20px 0; min-height:166px;}
+  .plank{height:16px; margin:0 12px; border-radius:2px 2px 6px 6px;
+         background:linear-gradient(180deg,var(--wood-light) 0%,var(--wood-mid) 55%,var(--wood-dark) 100%);
+         box-shadow:0 8px 12px -3px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.25);}
+
+  .book{width:94px; border-radius:3px 3px 1px 1px; box-shadow:2px 4px 7px rgba(0,0,0,.24);
+        color:#f4ecd8; padding:12px 9px; display:flex; flex-direction:column; justify-content:space-between;
+        font-size:12px; line-height:1.18;}
+  .book .bt{font-weight:700;}
+  .book .ba{font-size:10px; opacity:.8; font-weight:500;}
+  .book:nth-child(2n){transform:rotate(-.9deg)}
+  .spine{width:34px; writing-mode:vertical-rl; text-orientation:mixed; align-items:center; text-align:center;
+         font-size:11px; font-weight:600; letter-spacing:.03em; padding:12px 4px;
+         box-shadow:inset -3px 0 0 rgba(0,0,0,.22), inset 3px 0 0 rgba(255,255,255,.10), 2px 4px 7px rgba(0,0,0,.24);}
+
+  footer{text-align:center; font-size:11px; opacity:.5; padding:18px 0 26px;}
+  .note{position:absolute; top:10px; left:0; right:0; text-align:center; font-size:10px; opacity:.4;}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="note">mockup — Bedside view (purple) · grouped by author</div>
+
+    <header class="top">
+      <div class="brand">
+        <h1>Bookshelf</h1>
+        <p>what's next on the pile</p>
+      </div>
+      <div class="top-right">
+        <div class="icons">
+          <span class="icon-btn" title="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="20" x2="6" y2="13"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="9"/></svg></span>
+          <span class="icon-btn" title="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg></span>
+        </div>
+        <button class="toggle">← Back to Shelf</button>
+      </div>
+    </header>
+
+    <div class="controls">
+      <span class="sort"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>sort by <b>author ▾</b></span>
+    </div>
+
+    <div class="discover">
+      <div class="mystery">
+        <div class="qmark">?</div>
+        <div>
+          <div class="mt">Surprise me</div>
+          <div class="ms">a recommendation from your taste — tap to roll</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="author">Brandon Sanderson</div>
+    <section class="shelf">
+      <div class="shelf-row">
+        <div class="book" style="background:linear-gradient(155deg,#16324d,#27557e 70%,#4f86b5)"><span class="bt">The Way of Kings</span><span class="ba">Brandon Sanderson</span></div>
+        <div class="book" style="background:linear-gradient(155deg,#1d1d28,#34344c 70%,#55557a)"><span class="bt">Mistborn</span><span class="ba">Brandon Sanderson</span></div>
+      </div>
+      <div class="plank"></div>
+    </section>
+
+    <div class="author">Ursula K. Le Guin</div>
+    <section class="shelf">
+      <div class="shelf-row">
+        <div class="book" style="background:linear-gradient(155deg,#3a1530,#6a2452 70%,#9e4a82)"><span class="bt">The Left Hand of Darkness</span><span class="ba">Ursula K. Le Guin</span></div>
+        <div class="spine book" style="background:linear-gradient(90deg,#7a5230,#7a5230 65%,rgba(0,0,0,.18)); color:#f4d27a">A Wizard of Earthsea</div>
+      </div>
+      <div class="plank"></div>
+    </section>
+
+    <div class="author">Neil Gaiman</div>
+    <section class="shelf">
+      <div class="shelf-row">
+        <div class="book" style="background:linear-gradient(155deg,#241a2e,#48324f 70%,#6f4f70)"><span class="bt">American Gods</span><span class="ba">Neil Gaiman</span></div>
+      </div>
+      <div class="plank"></div>
+    </section>
+
+    <footer>made with love · v1</footer>
+  </div>
+</body>
+</html>
