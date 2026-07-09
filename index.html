@@ -328,11 +328,13 @@
     .reading-progress {
       margin-top: auto; display: flex; flex-direction: column; gap: 4px; padding-top: 6px;
     }
-    .reading-bar { height: 7px; border-radius: 999px; background: rgba(59,36,24,.14); overflow: hidden; }
+    .reading-bar-row { display: flex; align-items: center; gap: 6px; }
+    .reading-bar { flex: 1; height: 7px; border-radius: 999px; background: rgba(59,36,24,.14); overflow: hidden; }
     .reading-bar > span {
       display: block; height: 100%; border-radius: 999px;
       background: linear-gradient(90deg, var(--wood-mid), var(--wood-light));
     }
+    .reading-pct { font-size: 10px; font-weight: 600; opacity: 0.6; font-variant-numeric: tabular-nums; flex-shrink: 0; }
     .reading-page { font-size: 10px; opacity: 0.55; font-variant-numeric: tabular-nums; }
     body[data-view="bedside"] .reading-strip { display: none; }
 
@@ -1716,7 +1718,10 @@
         const pct = pc ? Math.min(100, Math.round(cur / pc * 100)) : 0;
         const footHtml = pc
           ? `<span class="reading-progress">
-               <span class="reading-bar"><span style="width:${pct}%"></span></span>
+               <span class="reading-bar-row">
+                 <span class="reading-bar"><span style="width:${pct}%"></span></span>
+                 <span class="reading-pct">${pct}%</span>
+               </span>
                <span class="reading-page">${cur ? `page ${cur} of ${pc} · tap to update` : `${pc} pages · tap to set your page`}</span>
              </span>`
           : `<span class="reading-card-since">${escapeHtml(relativeSince(b.startedAt))} · tap to add pages</span>`;
