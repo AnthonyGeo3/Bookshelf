@@ -135,19 +135,34 @@
       float: left; width: 110px; height: 165px; margin: 0 14px 8px 0;
       border-radius: 4px; box-shadow: 0 6px 10px rgba(0,0,0,.25); object-fit: cover; background: var(--paper-shade);
     }
-    .stars { color: #c2761b; letter-spacing: 2px; }
-
-    /* Tappable star picker in the add/edit form */
-    .star-picker { display: flex; gap: 4px; padding: 4px 0; }
-    .star {
-      background: transparent; border: none; cursor: pointer;
-      font-size: 34px; line-height: 1;
-      color: rgba(59,36,24,.22);
-      padding: 6px 4px; font-family: inherit;
-      transition: color .12s ease, transform .12s ease;
+    /* Read-only star display — half-fillable glyphs (supports 4.5 etc.) */
+    .stars { display: inline-flex; gap: 2px; line-height: 1; }
+    .star-glyph {
+      position: relative; display: inline-block; width: 1em; height: 1em;
+      color: rgba(59,36,24,.22);            /* empty portion */
     }
-    .star:hover, .star:focus-visible { transform: scale(1.18); outline: none; }
-    .star.filled { color: #c2761b; }
+    .star-glyph::before { content: '★'; position: absolute; left: 0; top: 0; }
+    .star-glyph > i {
+      position: absolute; left: 0; top: 0; height: 100%; width: 0;
+      overflow: hidden; color: #c2761b;     /* filled portion */
+    }
+    .star-glyph > i::before { content: '★'; }
+
+    /* Tappable star picker in the add/edit form — tap left/right half for .5 / whole */
+    .star-picker { display: flex; gap: 6px; padding: 4px 0; }
+    .star {
+      position: relative; background: transparent; border: none; cursor: pointer;
+      font-size: 34px; line-height: 1; width: 1em; height: 1em; padding: 0;
+      color: rgba(59,36,24,.22); font-family: inherit;
+      transition: transform .12s ease;
+    }
+    .star::before { content: '★'; position: absolute; left: 0; top: 0; }
+    .star > i {
+      position: absolute; left: 0; top: 0; height: 100%; width: 0;
+      overflow: hidden; color: #c2761b; pointer-events: none;
+    }
+    .star > i::before { content: '★'; }
+    .star:hover, .star:focus-visible { transform: scale(1.15); outline: none; }
 
     .btn-wood {
       width: 100%; padding: 10px 0; border-radius: 8px; background: var(--wood-mid);
@@ -512,12 +527,13 @@
 
       <div class="review-only">
         <label class="block text-sm opacity-70 mb-1">Rating</label>
-        <div id="ratingStars" class="star-picker" aria-label="Rating from 1 to 5 stars">
-          <button type="button" class="star" data-rating="1" aria-label="1 star">★</button>
-          <button type="button" class="star" data-rating="2" aria-label="2 stars">★</button>
-          <button type="button" class="star" data-rating="3" aria-label="3 stars">★</button>
-          <button type="button" class="star" data-rating="4" aria-label="4 stars">★</button>
-          <button type="button" class="star" data-rating="5" aria-label="5 stars">★</button>
+        <div id="ratingStars" class="star-picker" role="slider"
+             aria-label="Rating, half-star steps" aria-valuemin="0.5" aria-valuemax="5" aria-valuenow="5">
+          <button type="button" class="star" data-pos="1" aria-label="1 star"><i></i></button>
+          <button type="button" class="star" data-pos="2" aria-label="2 stars"><i></i></button>
+          <button type="button" class="star" data-pos="3" aria-label="3 stars"><i></i></button>
+          <button type="button" class="star" data-pos="4" aria-label="4 stars"><i></i></button>
+          <button type="button" class="star" data-pos="5" aria-label="5 stars"><i></i></button>
         </div>
         <input type="hidden" id="addRating" value="5" />
       </div>
@@ -624,7 +640,7 @@
 
   <input type="file" id="importFile" accept="application/json,.json" class="hidden" />
 
-  <footer class="text-center text-xs opacity-60 py-4">made with love · v27</footer>
+  <footer class="text-center text-xs opacity-60 py-4">made with love · v28</footer>
 
   <!-- Classics recommendation pool lives in its own file — extends window.CLASSICS, used by the module below -->
   <script src="classics.js"></script>
@@ -1242,18 +1258,44 @@
       });
     }
 
-    // ---- Star picker (rating input) ----
-    function setRating(value) {
-      const v = Math.max(1, Math.min(5, parseInt(value, 10) || 5));
-      document.getElementById('addRating').value = String(v);
+    // ---- Star picker (rating input) — supports half stars (0.5 steps) ----
+    // Paint the five glyphs to show a rating; each fills 0 / 50 / 100%. Preview-only,
+    // does not touch the stored value (used for hover feedback).
+    function paintStars(v) {
       document.querySelectorAll('#ratingStars .star').forEach((star, idx) => {
-        star.classList.toggle('filled', idx < v);
+        const pos = idx + 1;
+        const fill = v >= pos ? 100 : (v >= pos - 0.5 ? 50 : 0);
+        star.querySelector('i').style.width = fill + '%';
       });
     }
-    document.getElementById('ratingStars').addEventListener('click', (e) => {
+    function setRating(value) {
+      // Snap to nearest half-star, clamp to 0.5–5.
+      const v = Math.max(0.5, Math.min(5, Math.round((parseFloat(value) || 5) * 2) / 2));
+      document.getElementById('addRating').value = String(v);
+      document.getElementById('ratingStars').setAttribute('aria-valuenow', String(v));
+      paintStars(v);
+    }
+    // Which rating does a pointer event on a star map to? Left half → x.5, right half → whole.
+    // Keyboard/synthetic clicks (e.detail === 0) have no meaningful clientX, so pick the whole star.
+    function ratingFromEvent(star, e) {
+      const pos = parseInt(star.dataset.pos, 10);
+      const rect = star.getBoundingClientRect();
+      const isHalf = e.detail !== 0 && (e.clientX - rect.left) < rect.width / 2;
+      return isHalf ? pos - 0.5 : pos;
+    }
+    const ratingStars = document.getElementById('ratingStars');
+    ratingStars.addEventListener('click', (e) => {
       const star = e.target.closest('.star');
       if (!star) return;
-      setRating(star.dataset.rating);
+      setRating(ratingFromEvent(star, e));
+    });
+    // Desktop hover preview so half-star targets are discoverable.
+    ratingStars.addEventListener('mousemove', (e) => {
+      const star = e.target.closest('.star');
+      if (star) paintStars(ratingFromEvent(star, e));
+    });
+    ratingStars.addEventListener('mouseleave', () => {
+      paintStars(parseFloat(document.getElementById('addRating').value) || 0);
     });
     setRating(5); // initial paint matches the default hidden input value
 
@@ -1483,7 +1525,7 @@
 
       // Review fields only make sense for finished books. Bedside/reading get nulled out so we
       // don't store a phantom 5-star rating on a book that hasn't been read.
-      const rating = isFinished ? parseInt(document.getElementById('addRating').value, 10) : null;
+      const rating = isFinished ? parseFloat(document.getElementById('addRating').value) : null;
       const notes  = document.getElementById('addNotes').value;
       // User-chosen finish date (review forms only). A Date is stored directly; Firestore turns it
       // into a Timestamp. Falls back to "now" when finishing for the first time with no date given.
@@ -1575,9 +1617,15 @@
       return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
     }
 
+    // Returns HTML for five half-fillable star glyphs (supports ratings like 4.5).
     function stars(n) {
-      const filled = '★'.repeat(Math.max(0, Math.min(5, n)));
-      return filled + '☆'.repeat(5 - filled.length);
+      const v = Math.max(0, Math.min(5, Number(n) || 0));
+      let html = '';
+      for (let i = 1; i <= 5; i++) {
+        const fill = v >= i ? 100 : (v >= i - 0.5 ? 50 : 0);
+        html += `<span class="star-glyph"><i style="width:${fill}%"></i></span>`;
+      }
+      return html;
     }
 
     function chunk(arr, n) {
