@@ -640,7 +640,7 @@
 
   <input type="file" id="importFile" accept="application/json,.json" class="hidden" />
 
-  <footer class="text-center text-xs opacity-60 py-4">made with love · v28</footer>
+  <footer class="text-center text-xs opacity-60 py-4">made with love · v29</footer>
 
   <!-- Classics recommendation pool lives in its own file — extends window.CLASSICS, used by the module below -->
   <script src="classics.js"></script>
@@ -649,6 +649,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, setDoc, onSnapshot, query, orderBy, serverTimestamp, deleteDoc, doc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-functions.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAHMaWQRXsAglvgPxsAfR0tmTNzSo67-Y4",
@@ -666,6 +667,9 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const functions = getFunctions(app);
+    // Haiku-powered recommendations (Cloud Function holds the Anthropic key).
+    const recommendBooksFn = httpsCallable(functions, 'recommendBooks');
 
     // Shared data path — every device reads/writes the same household collection
     // (same pattern as A-to-A-Walking). The `profile` field on each book says whose it is.
@@ -836,6 +840,73 @@
       if (matchedGenres.length) bits.push(matchedGenres.slice(0, 2).join(' & ').toLowerCase());
       if (bits.length === 0) return 'a quieter match — fits your overall taste roughly';
       return `you tend to like ${bits.join(' / ')} books`;
+    }
+
+    // ---- Haiku recommendation (via Firebase Function) ----
+    // Sends a compact digest of the reader's ratings + reviews to Haiku and gets
+    // back real book suggestions with a personal reason. Batches results so a
+    // single API call covers several "try another" re-rolls. Any failure (offline,
+    // key/quota issue, too little history) returns null and the caller falls back
+    // to the local classics engine — so the mystery button never breaks.
+    let llmQueue = [];            // pending Haiku picks for the active profile
+    let llmQueueProfile = null;   // which profile llmQueue was built for
+    const llmShown = new Set();   // "Title by Author" already surfaced (extra excludes)
+
+    // Highest-rated first, capped, with a trimmed review — keeps the prompt tight.
+    function buildTasteDigest(finishedBooks) {
+      return finishedBooks
+        .filter(b => b.rating != null)
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+        .slice(0, 40)
+        .map(b => {
+          const note = (b.notes || '').trim().replace(/\s+/g, ' ').slice(0, 200);
+          const tags = [...(b.genres || []), ...(b.tone || [])].slice(0, 4).join(', ');
+          let line = `- ${b.title} by ${b.author} — ${b.rating}★`;
+          if (tags) line += ` [${tags}]`;
+          if (note) line += ` — "${note}"`;
+          return line;
+        })
+        .join('\n');
+    }
+
+    async function fetchLLMBatch(finishedBooks, ownedBooks) {
+      const rated = finishedBooks.filter(b => b.rating != null);
+      if (rated.length < 2) return []; // too little signal — let the local engine handle it
+      const digest = buildTasteDigest(finishedBooks);
+      const exclude = [
+        ...ownedBooks.map(b => `${b.title} by ${b.author}`),
+        ...llmShown,
+      ];
+      const res = await recommendBooksFn({ digest, exclude, count: 5 });
+      const recs = (res && res.data && res.data.recommendations) || [];
+      const ownedKeys = new Set(
+        ownedBooks.map(b => `${(b.title || '').toLowerCase()}|${(b.author || '').toLowerCase()}`)
+      );
+      return recs.filter(r => {
+        const key = `${r.title.toLowerCase()}|${r.author.toLowerCase()}`;
+        return !ownedKeys.has(key) && !llmShown.has(`${r.title} by ${r.author}`);
+      });
+    }
+
+    async function pickLLMRecommendation(finishedBooks, ownedBooks) {
+      if (llmQueueProfile !== activeProfile) { // reset when switching profiles
+        llmQueue = [];
+        llmShown.clear();
+        llmQueueProfile = activeProfile;
+      }
+      if (llmQueue.length === 0) {
+        llmQueue = await fetchLLMBatch(finishedBooks, ownedBooks);
+      }
+      const rec = llmQueue.shift();
+      if (!rec) return null;
+      llmShown.add(`${rec.title} by ${rec.author}`);
+      return {
+        title: rec.title,
+        author: rec.author,
+        reason: rec.reason,
+        genres: [], tone: [], pace: null, chapterLength: null,
+        source: 'llm',
+      };
     }
 
     // Auth & Data syncing
@@ -1316,8 +1387,19 @@
       const profileBooks = books.filter(b => (b.profile || 'anthony') === activeProfile);
       const finishedBooks = profileBooks.filter(b => (b.status || 'finished') === 'finished');
 
-      const isStretch = shouldStretch();
-      const pick = pickRecommendation(CLASSICS, finishedBooks, profileBooks, isStretch);
+      // Try Haiku first; fall back to the local classics engine on any failure
+      // or when there's too little history to work with.
+      let isStretch = false;
+      let pick = null;
+      try {
+        pick = await pickLLMRecommendation(finishedBooks, profileBooks);
+      } catch (err) {
+        console.warn('[rec] Haiku unavailable, using local engine:', err?.message || err);
+      }
+      if (!pick) {
+        isStretch = shouldStretch();
+        pick = pickRecommendation(CLASSICS, finishedBooks, profileBooks, isStretch);
+      }
 
       const contentEl = document.getElementById('mysteryContent');
       if (!pick) {
@@ -1354,7 +1436,7 @@
         ? `<p class="text-sm leading-relaxed mt-3" style="opacity:.85">${escapeHtml(blurb)}</p>`
         : '';
 
-      const reasoning = reasoningFor(pick, profile, isStretch);
+      const reasoning = pick.source === 'llm' ? pick.reason : reasoningFor(pick, profile, isStretch);
 
       contentEl.innerHTML = `
         ${coverHtml}

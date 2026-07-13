@@ -1,0 +1,13 @@
+{
+  "name": "bookshelf-functions",
+  "description": "Cloud Functions for Bookshelf — Haiku-powered book recommendations",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
+    "firebase-functions": "^6.0.0"
+  }
+}

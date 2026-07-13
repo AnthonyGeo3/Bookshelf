@@ -6,7 +6,7 @@
  * IMPORTANT: bump CACHE_NAME (e.g. 'bookshelf-v1' -> 'bookshelf-v2') any time you change
  * an asset that's listed in CORE_ASSETS. Otherwise browsers will serve the stale version.
  */
-const CACHE_NAME = 'bookshelf-v28';
+const CACHE_NAME = 'bookshelf-v29';
 
 const CORE_ASSETS = [
   './',
